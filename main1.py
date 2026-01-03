@@ -2074,10 +2074,10 @@ if st.button("Enviar respuestas (generar PDF)"):
 
     if not REPORTLAB_AVAILABLE:
         st.error("No se puede generar el PDF porque ReportLab no está instalado.")
-        return
+        st.stop()
     if not pdf_path or not os.path.exists(pdf_path):
         st.error(f"No se pudo generar el PDF en disco. Ruta esperada:\n{pdf_path}")
-        return
+        st.stop()
 
     # 1) Descargar localmente
     with open(pdf_path, "rb") as f:
