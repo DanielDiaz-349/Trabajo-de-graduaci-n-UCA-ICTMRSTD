@@ -1773,7 +1773,7 @@ else:
 
 
         # Descarga local (útil en ejecución local)
-        try:
+    try:
             with open(pdf_path, "rb") as f:
     st.download_button(
         "Descargar PDF",
