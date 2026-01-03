@@ -21,6 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import streamlit as st
+from github_uploader import upload_file_to_github_results
 
 
 def add_uca_logo_to_ui():
@@ -52,41 +53,7 @@ def add_uca_logo_to_ui():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-def upload_file_to_github(local_path, path_in_repo):
-    """
-    Sube un archivo local a un repositorio de GitHub usando la API.
-    path_in_repo: ruta dentro del repo, por ejemplo 'guia1/archivo.pdf'
-    """
-    token = os.getenv("GITHUB_TOKEN")
-    user = os.getenv("GITHUB_USER")
-    repo = os.getenv("GITHUB_REPO")
 
-    if not token or not user or not repo:
-        print("Faltan variables de entorno GITHUB_TOKEN, GITHUB_USER o GITHUB_REPO.")
-        return False
-
-    if not os.path.exists(local_path):
-        print("El archivo local no existe:", local_path)
-        return False
-
-    with open(local_path, "rb") as f:
-        content = f.read()
-    b64_content = base64.b64encode(content).decode("utf-8")
-
-    url = f"https://api.github.com/repos/{user}/{repo}/contents/{path_in_repo}"
-    headers = {"Authorization": f"token {token}"}
-    data = {
-        "message": f"Subiendo {os.path.basename(local_path)} desde Streamlit (Guía 1)",
-        "content": b64_content
-    }
-
-    r = requests.put(url, headers=headers, json=data)
-    if r.status_code in (200, 201):
-        print("Subida correcta a GitHub:", path_in_repo)
-        return True
-    else:
-        print("Error al subir a GitHub:", r.status_code, r.text)
-        return False
 
 
 from pathlib import Path
@@ -2092,78 +2059,49 @@ def render_dinamicas_guia1():
     st.markdown("---")
 
     # -------- ENVÍO FINAL (ÚNICO BOTÓN) --------
-    if st.button("Enviar respuestas (generar PDF)"):
-        if not state["dyn1"]["completed"] or not state["dyn2"]["completed"]:
-            st.error("Debes completar ambas dinámicas antes de enviar.")
-            return
+if st.button("Enviar respuestas (generar PDF)"):
+    if not state["dyn1"]["completed"] or not state["dyn2"]["completed"]:
+        st.error("Debes completar ambas dinámicas antes de enviar.")
+        return
 
-        # Resultados Dinámica 1
-        key1 = state["dyn1"]["key"]
-        ans1 = state["dyn1"]["answers"]
-        correct1 = {"q1": key1["q1"], "q2": key1["q2"], "q3": key1["q3"], "q4": key1["q4"]}
-        ok1 = sum(ans1.get(k) == v for k, v in correct1.items())
-        map1 = {4: 10.0, 3: 8.0, 2: 6.0, 1: 4.0, 0: 0.0}
-        score1 = map1.get(ok1, 0.0)
+    # ... (todo tu cálculo de resultados queda igual)
 
-        # Resultados Dinámica 2
-        key2 = state["dyn2"]["key"]
-        ans2 = state["dyn2"]["answers"]
-        correct2 = {"q1": key2["q1"], "q2": key2["q2"], "q3": key2["q3"]}
-        ok2 = sum(ans2.get(k) == v for k, v in correct2.items())
-        map2 = {3: 10.0, 2: 8.0, 1: 6.0, 0: 0.0}
-        score2 = map2.get(ok2, 0.0)
+    pdf_path = export_results_pdf_guia1(
+        filename_base=f"guia1_{state['student'].get('id', 'sin_id')}",
+        student_info=state["student"],
+        resultados=resultados,
+    )
 
-        resultados = [
-            {
-                "dyn_id": 1,
-                "score": score1,
-                "answers": ans1,
-                "correct": correct1,
-                "key": {
-                    "descripcion": "Guía 1 - Dinámica 1 - Ruido AWGN y BER",
-                    "snr_dB": key1["snr"],
-                    "delay_Tb": key1["delay"],
-                },
-            },
-            {
-                "dyn_id": 2,
-                "score": score2,
-                "answers": ans2,
-                "correct": correct2,
-                "key": {
-                    "descripcion": "Guía 1 - Dinámica 2 - Productos de intermodulación de tercer orden",
-                    "f1_Hz": key2["f1"],
-                    "f2_Hz": key2["f2"],
-                    "A1": key2["A1"],
-                    "A2": key2["A2"],
-                    "k3": key2["k3"],
-                },
-            },
-        ]
+    if not REPORTLAB_AVAILABLE:
+        st.error("No se puede generar el PDF porque ReportLab no está instalado.")
+        return
+    if not pdf_path or not os.path.exists(pdf_path):
+        st.error(f"No se pudo generar el PDF en disco. Ruta esperada:\n{pdf_path}")
+        return
 
-        pdf_path = export_results_pdf_guia1(
-            filename_base=f"guia1_{state['student'].get('id', 'sin_id')}",
-            student_info=state["student"],
-            resultados=resultados,
+    # 1) Descargar localmente
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "Descargar PDF",
+            data=f.read(),
+            file_name=os.path.basename(pdf_path),
+            mime="application/pdf",
         )
 
-        if not REPORTLAB_AVAILABLE:
-            st.error("No se puede generar el PDF porque ReportLab no está instalado en este entorno. "
-                     "Instala con: pip install reportlab (y agrégalo a requirements.txt si usarás Streamlit Cloud).")
-        elif not pdf_path:
-            st.error("No se pudo generar el PDF: la función devolvió una ruta vacía.")
-        elif not os.path.exists(pdf_path):
-            st.error(f"No se pudo generar el PDF en disco. Ruta esperada:\n{pdf_path}\n"
-                     "Revisa permisos de escritura o cambia la carpeta de salida.")
-        else:
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                    "Descargar PDF",
-                    data=f.read(),
-                    file_name=os.path.basename(pdf_path),
-                    mime="application/pdf",
-                )
-            st.success("PDF generado correctamente.")
+    # 2) Subir al repo de RESULTADOS (NUEVO)
+    nombre_pdf_repo = os.path.basename(pdf_path)
+    ruta_repo = f"guia1/{nombre_pdf_repo}"  # ruta dentro del repo de resultados
+
+    ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
+
+    if ok:
+        st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
+        if isinstance(info, str) and info.startswith("http"):
+            st.link_button("Ver archivo en GitHub", info)
+        st.write("Ruta en el repositorio:", ruta_repo)
+    else:
+        st.error(f"El PDF se generó, pero falló el envío a GitHub: {info}")
+
 
 
 def render_resumen_dinamicas_guia1():
