@@ -1,0 +1,13 @@
+streamlit
+numpy
+scipy
+plotly
+matplotlib
+requests
+reportlab
+Pillow
+math
+datetime
+base64
+os
+json
