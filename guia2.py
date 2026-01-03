@@ -1771,20 +1771,20 @@ else:
     st.write("Ruta local del PDF:", pdf_path)
     st.write("Ruta en el repositorio:", ruta_repo)
 
+# Descarga local (útil en ejecución local)
+try:
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            "Descargar PDF",
+            data=f.read(),
+            file_name=nombre_pdf_repo,
+            mime="application/pdf",
+            key="g2_download_pdf",
+        )
+except Exception:
+    pass
 
-        # Descarga local (útil en ejecución local)
-    try:
-         with open(pdf_path, "rb") as f:
-    st.download_button(
-        "Descargar PDF",
-        data=f.read(),
-        file_name=nombre_pdf_repo,
-        mime="application/pdf",
-        key="g2_download_pdf",
-    )
 
-        except Exception:
-            pass
 
 
 
@@ -1816,6 +1816,7 @@ def render_resumen_dinamicas_guia2():
 
     total_score = res1["score"] + res2["score"] + res3["score"]
     promedio = total_score / 3.0
+    st.markdown(f"**Nota global (oculta al alumno): {promedio:.2f}**")
 
     if st.button("Enviar respuestas"):
         pdf_path = export_results_pdf_guia2(
@@ -1824,25 +1825,39 @@ def render_resumen_dinamicas_guia2():
             resultados=[res1, res2, res3],
         )
 
-        # Definir una ruta dentro del repo, por ejemplo:
-        # guia2/carne_fecha.pdf
+        if not pdf_path or not os.path.exists(pdf_path):
+            st.error("No se pudo generar el PDF (verifica ReportLab o permisos).")
+            return
+
         nombre_pdf_repo = os.path.basename(pdf_path)
         ruta_repo = f"guia2/{nombre_pdf_repo}"
 
         ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
 
+        if ok:
+            st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
+            if isinstance(info, str) and info.startswith("http"):
+                st.link_button("Ver archivo en GitHub", info)
 
-       if ok:
-    st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
-    if isinstance(info, str) and info.startswith("http"):
-    st.link_button("Ver archivo en GitHub", info)
-    st.write("Ruta local del PDF:", pdf_path)
-    st.write("Ruta en el repositorio:", ruta_repo)
-else:
-    st.error(f"El PDF se generó, pero hubo un problema al enviarlo a GitHub: {info}")
-    st.write("Ruta local del PDF:", pdf_path)
-    st.write("Ruta en el repositorio:", ruta_repo)
-)
+            st.write("Ruta local del PDF:", pdf_path)
+            st.write("Ruta en el repositorio:", ruta_repo)
+        else:
+            st.error(f"El PDF se generó, pero hubo un problema al enviarlo a GitHub: {info}")
+            st.write("Ruta local del PDF:", pdf_path)
+            st.write("Ruta en el repositorio:", ruta_repo)
+
+        # Descarga local (útil en ejecución local o Cloud)
+        try:
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    "Descargar PDF",
+                    data=f.read(),
+                    file_name=nombre_pdf_repo,
+                    mime="application/pdf",
+                    key="g2_download_pdf",
+                )
+        except Exception:
+            pass
 
 
 # =========================================================
@@ -1887,5 +1902,4 @@ def render_guia2():
         render_dinamicas_guia2()
 
     with tabs[5]:
-
         st.markdown(CONCLUSIONES2_TEXT)
