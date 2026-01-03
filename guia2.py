@@ -1762,7 +1762,7 @@ def render_dinamicas_guia2():
 
 if ok:
     st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
-if isinstance(info, str) and info.startswith("http"):
+    if isinstance(info, str) and info.startswith("http"):
         st.link_button("Ver archivo en GitHub", info)
     st.write("Ruta local del PDF:", pdf_path)
     st.write("Ruta en el repositorio:", ruta_repo)
@@ -1835,7 +1835,7 @@ def render_resumen_dinamicas_guia2():
        if ok:
     st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
     if isinstance(info, str) and info.startswith("http"):
-        st.link_button("Ver archivo en GitHub", info)
+    st.link_button("Ver archivo en GitHub", info)
     st.write("Ruta local del PDF:", pdf_path)
     st.write("Ruta en el repositorio:", ruta_repo)
 else:
