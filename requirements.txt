@@ -6,8 +6,3 @@ matplotlib
 requests
 reportlab
 Pillow
-math
-datetime
-base64
-os
-json
