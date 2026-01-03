@@ -464,34 +464,32 @@ def render_ejemplo1():
 
     # ---- Imagen + gráficas juntas (imagen primero) ----
     # Tu ruta actual:
-    DIAGRAM_PATH = r"C:\Users\dddan\Documents\TRABAJO DE GRADUACION\PYTHON\GUIA TRABAJO DE GRADUACION\Modelo binario.png"
 
-    # Intentar también rutas relativas a guia5.py (por si después mueves a cloud)
-    base_dir = os.path.dirname(__file__)
-    candidates = [
-        os.path.join(base_dir, "assets", "Modelo binario.png"),
-        os.path.join(base_dir, "assets", "modelo_binario.png"),
-        os.path.join(base_dir, "Modelo binario.png"),
-        DIAGRAM_PATH,
-    ]
-    diagram_path = None
-    for p in candidates:
-        if os.path.exists(p):
-            diagram_path = p
-            break
+    # Buscar la imagen en rutas RELATIVAS al repo (compatibles con Streamlit Cloud)
+base_dir = os.path.dirname(__file__)
+candidates = [
+    os.path.join(base_dir, "assets", "modelo_binario.png"),   # recomendado (sin espacios, minúsculas)
+    os.path.join(base_dir, "assets", "Modelo binario.png"),   # opcional por si aún no renombraste
+    os.path.join(base_dir, "Modelo binario.png"),             # opcional (si la dejas junto a guia5.py)
+]
 
-    with col2:
-        if diagram_path is not None:
-            st.image(
-                diagram_path,
-                caption="Modelo general de un sistema digital en presencia de AWGN",
-                use_container_width=True
-            )
-        else:
-            st.warning("No pude cargar la imagen. Guarda 'Modelo binario.png' en una ruta válida (ideal: carpeta assets/).")
+diagram_path = None
+for p in candidates:
+    if os.path.exists(p):
+        diagram_path = p
+        break
 
-        st.plotly_chart(fig, use_container_width=True, theme=None)
+with col2:
+    if diagram_path is not None:
+        st.image(
+            diagram_path,
+            caption="Modelo general de un sistema digital en presencia de AWGN",
+            use_container_width=True
+        )
+    else:
+        st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
 
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
         st.markdown(
             f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
