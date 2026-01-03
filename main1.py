@@ -1388,7 +1388,10 @@ def render_dinamicas_guia1():
 
         state["dyn2"]["answers"] = {"q1": q1, "q2": q2, "q3": q3}
         state["dyn2"]["completed"] = all(v is not None for v in state["dyn2"]["answers"].values())
-        st.success("Dinámica 2 lista.") if state["dyn2"]["completed"] else st.info("Completa todas las preguntas.")
+        if state["dyn2"]["completed"]:
+            st.success("Dinámica 2 lista.")
+        else:
+            st.info("Completa todas las preguntas.")
 
     st.markdown("---")
 
