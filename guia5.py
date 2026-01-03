@@ -35,8 +35,6 @@ Analizar y validar, mediante simulación interactiva, el desempeño de un sistem
 - Contrastar el desempeño entre BPSK y BFSK usando curvas de desempeño.
 - Fortalecer la lectura de resultados mediante gráficas interactivas (tiempo, histogramas de la variable de decisión y BER), respondiendo preguntas de verificación conceptual para consolidar el vínculo entre teoría y simulación."""
 
-# Nota: el texto de introducción puede ser extenso.
-# Se muestra en Markdown; las ecuaciones clave se renderizan aparte con st.latex.
 INTRO_MD = r"""En un sistema de telecomunicación digital, una fuente de datos binarios genera un flujo de bits que se agrupa en un vector de datos transmitidos. Este vector alimenta el modulador de datos, el cual realiza una transformación que asigna la información binaria a una forma de onda transmitida. En señales pasa banda, esta forma de onda se expresa mediante una portadora y su envolvente compleja. Tras propagarse por el canal de transmisión, la señal se atenúa por la pérdida de propagación y se retrasa por el retardo debido a la propagación; además, al sumarse el ruido, la señal recibida en el receptor se modela como una suma entre la salida del canal y un proceso de ruido blanco Gaussiano aditivo (AWGN).
 
 El receptor aplica demodulación para convertir la señal recibida a banda base y así obtener una señal de banda base que pueda procesarse. El objetivo es producir un estimado del vector de datos transmitidos a partir de la observación ruidosa, lo que conduce al problema de detección. En transmisión binaria, la detección se plantea como la elección entre dos hipótesis asociadas a dos señales posibles, x0(t) y x1(t), durante un intervalo Tp. El desempeño se cuantifica por la probabilidad de error de bit (BEP), la cual depende tanto de la energía de las señales como de su similitud, medida mediante el coeficiente de correlación y la distancia euclidiana cuadrática entre señales.
@@ -123,15 +121,15 @@ Una computadora personal con sistema operativo actualizado (Windows, Linux o mac
 
 Python instalado (versión 3.8 o superior recomendada).
 
-Un entorno de desarrollo como Visual Studio Code o PyCharm. Las siguientes bibliotecas de Python:
+Un entorno de desarrollo como Visual Studio Code o PyCharm. Las siguientes bibliotecas de Python:
 
-numpy para el manejo de arreglos y operaciones numéricas.
+numpy para el manejo de arreglos y operaciones numéricas.
 
-matplotlib para la generación de gráficas.
+matplotlib para la generación de gráficas.
 
-streamlit para la interfaz interactiva de la guía.
+streamlit para la interfaz interactiva de la guía.
 
-scipy para operaciones adicionales de filtrado, convolución y análisis en frecuencia."""
+scipy para operaciones adicionales de filtrado, convolución y análisis en frecuencia."""
 
 CONCLUSIONES_MD = r"""- En un sistema de transmisión digital en presencia de AWGN, el desempeño queda fuertemente gobernado por la relación : al aumentar la probabilidad de error disminuye, porque el ruido tiene menor capacidad de desplazar la variable de decisión hacia la región equivocada.
 - El detector óptimo (MAP/ML bajo hipótesis equiprobables) se interpreta como una regla de decisión basada en un umbral/estadístico que separa las hipótesis. Esta visión permite conectar directamente la teoría (distribuciones condicionadas y probabilidad de error) con la simulación (BER estimada), haciendo evidente por qué la detección óptima mejora el desempeño.
@@ -161,7 +159,6 @@ def Q(x: np.ndarray | float) -> np.ndarray | float:
 
 
 def ber_teorica_bpsk(EbN0_lin: np.ndarray) -> np.ndarray:
-    # BPSK coherente: Pb = Q(sqrt(2 Eb/N0)) = 0.5 erfc(sqrt(Eb/N0))
     return Q(np.sqrt(2.0 * EbN0_lin))
 
 
@@ -177,7 +174,6 @@ def ber_teorica_bfsk(EbN0_lin: np.ndarray, fd: float, Tb: float) -> np.ndarray:
     """BER teórica coherente para BFSK con separación fd (modelo del capítulo)."""
     rho = rho_bfsk(fd, Tb)
     term = max(0.0, 1.0 - rho)
-    # Pb = 0.5 erfc( sqrt( (Eb/(2N0)) (1-ρ) ) )  == Q( sqrt( (Eb/N0) (1-ρ) ) )
     return 0.5 * _erfc(np.sqrt(EbN0_lin * term / 2.0))
 
 
@@ -213,20 +209,14 @@ def _line(fig: go.Figure, x, y, name: str, color: str, row: int = 1, col: int = 
 
 
 def _force_plotly_readable(fig, height: int = 420):
-    """
-    Fuerza un estilo claro y legible en Plotly, aunque Streamlit esté en dark theme.
-    Evita ejes/labels 'opacos' y tooltips oscuros.
-    """
     fig.update_layout(
         height=height,
-        template="plotly_white",  # <-- importante: evita que Streamlit meta su tema oscuro
+        template="plotly_white",
         paper_bgcolor="white",
         plot_bgcolor="white",
         font=dict(color="black"),
         hoverlabel=dict(bgcolor="white", font_color="black"),
-        margin=dict(l=60, r=20, t=95, b=55),  # <-- más espacio arriba
-
-        # --- LEYENDA legible ---
+        margin=dict(l=60, r=20, t=95, b=55),
         legend=dict(
             orientation="h",
             yanchor="bottom", y=1.02,
@@ -238,7 +228,6 @@ def _force_plotly_readable(fig, height: int = 420):
         ),
     )
 
-    # Ejes: líneas, ticks, grid y títulos
     fig.update_xaxes(
         showline=True, linecolor="black", linewidth=2,
         ticks="outside", tickcolor="black",
@@ -256,7 +245,6 @@ def _force_plotly_readable(fig, height: int = 420):
         zeroline=False,
     )
 
-    # Opcional: que los subtítulos (subplot_titles) se centren si existen
     if hasattr(fig.layout, "annotations") and fig.layout.annotations:
         for ann in fig.layout.annotations:
             if isinstance(ann, dict):
@@ -274,13 +262,6 @@ def _force_plotly_readable(fig, height: int = 420):
 # ----------------------------
 
 def render_ejemplo1():
-    import os
-    import math
-    import numpy as np
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-    import streamlit as st
-
     st.subheader("Ejemplo 1 — Cadena digital: bits → modulación → AWGN → decisión")
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
@@ -330,40 +311,33 @@ def render_ejemplo1():
         return
 
     seed = st.session_state.get("g5_e1_seed", 12345)
-    rng = _rng(seed)  # <- se asume que ya existe en tu guía
+    rng = _rng(seed)
 
-    # ---- Parámetros ----
     Eb = 1.0
     Tb = float(Tb_ms) * 1e-3
     EbN0_lin = 10 ** (EbN0_dB / 10.0)
     N0 = Eb / EbN0_lin
 
-    # Fs interna (alta para ver portadora continua y evitar aliasing)
     fs = max(20.0 * fc, 80.0 / Tb)
     fs = float(min(fs, 200000.0))
     dt = 1.0 / fs
 
-    Ns = int(max(32, round(fs * Tb)))   # muestras por bit
+    Ns = int(max(32, round(fs * Tb)))
     N = Nb * Ns
     t = np.arange(N) * dt
 
-    # Bits y símbolos BPSK: a_k ∈ {+1, -1}
     b = rng.integers(0, 2, size=Nb)
     a = 2 * b - 1
     a_samp = np.repeat(a, Ns)
 
-    # Señal BPSK pasabanda continua:
-    # Eb = ∫ s^2 dt = (A^2/2)*Tb  -> A = sqrt(2Eb/Tb)
     A = math.sqrt(2.0 * Eb / Tb)
     carrier = np.cos(2 * np.pi * fc * t)
     s = A * a_samp * carrier
 
-    # Ruido AWGN muestreado: var = N0*fs/2
     sigma_w = math.sqrt(N0 * fs / 2.0)
     w = rng.normal(0.0, sigma_w, size=N)
     r = s + w
 
-    # ---- Demodulación coherente por correlación ----
     yk = np.zeros(Nb, dtype=float)
     for k in range(Nb):
         i0 = k * Ns
@@ -376,7 +350,6 @@ def render_ejemplo1():
     n_err = int(np.sum(b_hat != b))
     ber_hat = n_err / Nb
 
-    # ---- Figura Plotly (interactiva) ----
     fig = make_subplots(
         rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.08,
         subplot_titles=(
@@ -387,12 +360,10 @@ def render_ejemplo1():
         )
     )
 
-    # Fronteras de bit
     bit_edges = np.arange(0, Nb + 1) * Tb
     for xedge in bit_edges:
         fig.add_vline(x=float(xedge), line_width=1, line_dash="dot", line_color="rgba(0,0,0,0.25)")
 
-    # Trazas con colores fijos (alta legibilidad)
     fig.add_trace(
         go.Scatter(
             x=t, y=np.repeat(b, Ns), mode="lines",
@@ -431,13 +402,11 @@ def render_ejemplo1():
     fig.update_yaxes(title_text="Bit", row=4, col=1, range=[-0.2, 1.2])
     fig.update_xaxes(title_text="Tiempo (s)", row=4, col=1)
 
-    # Centrar títulos de subplots (alineación)
     if getattr(fig.layout, "annotations", None):
         for ann in fig.layout.annotations:
             ann["x"] = 0.5
             ann["xanchor"] = "center"
 
-    # Alto contraste (independiente del tema Streamlit)
     fig.update_layout(
         template="plotly_white",
         title="Cadena digital: bits → modulación → AWGN → decisión",
@@ -463,74 +432,67 @@ def render_ejemplo1():
                      gridcolor="rgba(0,0,0,0.15)", tickfont=dict(size=13))
 
     # ---- Imagen + gráficas juntas (imagen primero) ----
-    # Tu ruta actual:
-
     # Buscar la imagen en rutas RELATIVAS al repo (compatibles con Streamlit Cloud)
-base_dir = os.path.dirname(__file__)
-candidates = [
-    os.path.join(base_dir, "assets", "modelo_binario.png"),   # recomendado (sin espacios, minúsculas)
-    os.path.join(base_dir, "assets", "Modelo binario.png"),   # opcional por si aún no renombraste
-    os.path.join(base_dir, "Modelo binario.png"),             # opcional (si la dejas junto a guia5.py)
-]
+    base_dir = os.path.dirname(__file__)
+    candidates = [
+        os.path.join(base_dir, "assets", "modelo_binario.png"),
+        os.path.join(base_dir, "assets", "Modelo binario.png"),
+        os.path.join(base_dir, "Modelo binario.png"),
+    ]
 
-diagram_path = None
-for p in candidates:
-    if os.path.exists(p):
-        diagram_path = p
-        break
+    diagram_path = None
+    for p in candidates:
+        if os.path.exists(p):
+            diagram_path = p
+            break
 
-with col2:
-    if diagram_path is not None:
-        st.image(
-            diagram_path,
-            caption="Modelo general de un sistema digital en presencia de AWGN",
-            use_container_width=True
-        )
-    else:
-        st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
+    with col2:
+        if diagram_path is not None:
+            st.image(
+                diagram_path,
+                caption="Modelo general de un sistema digital en presencia de AWGN",
+                use_container_width=True
+            )
+        else:
+            st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
 
-    st.plotly_chart(fig, use_container_width=True, theme=None)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
-    st.markdown(
+        st.markdown(
             f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
             f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
         )
 
-    # ---- Explicación + Preguntas ----
-    st.markdown("##### Explicación de la simulación")
+        st.markdown("##### Explicación de la simulación")
+        st.markdown(
+            "- **$E_b$ (energía por bit):** es la energía promedio invertida para transmitir **un bit**. "
+            "Se obtiene integrando la energía de la señal en el intervalo de bit: "
+            "$$E_b=\\int_0^{T_b} s^2(t)\\,dt.$$ "
+            "A mayor $E_b$, el bit llega “más fuerte” al receptor.\n"
+            "- **$N_0$ (densidad espectral de potencia del ruido):** mide cuánta potencia de ruido hay por cada Hz (W/Hz) en AWGN. "
+            "Para ruido blanco, la PSD es aproximadamente constante y suele expresarse como $N_0/2$ en banda base. "
+            "A mayor $N_0$, el canal es “más ruidoso”.\n"
+            "- **Relación $E_b/N_0$:** es una SNR normalizada por bit que compara la energía útil contra la intensidad del ruido. "
+            "Si $E_b/N_0$ aumenta, disminuye la probabilidad de error (BER); si baja, el ruido domina y aparecen más errores. \n"
+            "- Un correlador es un bloque del receptor que mide qué tan parecida es la señal recibida a una señal de referencia que el receptor “espera” recibir. \n"
+        )
 
-    st.markdown(
-        "- **$E_b$ (energía por bit):** es la energía promedio invertida para transmitir **un bit**. "
-        "Se obtiene integrando la energía de la señal en el intervalo de bit: "
-        "$$E_b=\\int_0^{T_b} s^2(t)\\,dt.$$ "
-        "A mayor $E_b$, el bit llega “más fuerte” al receptor.\n"
-        "- **$N_0$ (densidad espectral de potencia del ruido):** mide cuánta potencia de ruido hay por cada Hz (W/Hz) en AWGN. "
-        "Para ruido blanco, la PSD es aproximadamente constante y suele expresarse como $N_0/2$ en banda base. "
-        "A mayor $N_0$, el canal es “más ruidoso”.\n"
-        "- **Relación $E_b/N_0$:** es una SNR normalizada por bit que compara la energía útil contra la intensidad del ruido. "
-        "Si $E_b/N_0$ aumenta, disminuye la probabilidad de error (BER); si baja, el ruido domina y aparecen más errores. \n"
-        "- Un correlador es un bloque del receptor que mide qué tan parecida es la señal recibida a una señal de referencia que el receptor “espera” recibir. \n"
+        st.markdown(
+            "- En la gráfica (2), la señal **modulada es analógica** porque es una **onda continua** (portadora) cuya fase cambia según el bit.\n"
+            "- En la gráfica (3), el canal agrega **ruido AWGN**: al bajar $E_b/N_0$ el ruido domina y la señal se distorsiona más.\n"
+            "- En la gráfica (4), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
+            "si $y_k>0$ decide 1, si $y_k<0$ decide 0.\n"
+            "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
+        )
 
-    )
+        st.markdown("##### Preguntas y respuestas")
+        st.markdown("**1. ¿Por qué la señal de la gráfica (2) es analógica aunque transmita bits?**")
+        st.markdown("**R:** Porque la información binaria se representa mediante un **parámetro continuo** de una onda (fase/amplitud) en el tiempo continuo.")
+        st.markdown("**2. ¿Qué efecto tiene disminuir $E_b/N_0$?**")
+        st.markdown("**R:** Aumenta la potencia relativa del ruido frente a la energía por bit, haciendo más probable que el estadístico cambie de signo y se detecte mal el bit.")
+        st.markdown("**3. ¿Qué bloque del receptor realiza la “decisión” final?**")
+        st.markdown("**R:** El muestreador a la salida del correlador, que compara el estadístico con el umbral (aquí 0).")
 
-    st.markdown(
-
-        "- En la gráfica (2), la señal **modulada es analógica** porque es una **onda continua** (portadora) cuya fase cambia según el bit.\n"
-        "- En la gráfica (3), el canal agrega **ruido AWGN**: al bajar $E_b/N_0$ el ruido domina y la señal se distorsiona más.\n"
-        "- En la gráfica (4), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
-        "si $y_k>0$ decide 1, si $y_k<0$ decide 0.\n"
-        "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
-
-
-    )
-
-    st.markdown("##### Preguntas y respuestas")
-    st.markdown("**1. ¿Por qué la señal de la gráfica (2) es analógica aunque transmita bits?**")
-    st.markdown("**R:** Porque la información binaria se representa mediante un **parámetro continuo** de una onda (fase/amplitud) en el tiempo continuo.")
-    st.markdown("**2. ¿Qué efecto tiene disminuir $E_b/N_0$?**")
-    st.markdown("**R:** Aumenta la potencia relativa del ruido frente a la energía por bit, haciendo más probable que el estadístico cambie de signo y se detecte mal el bit.")
-    st.markdown("**3. ¿Qué bloque del receptor realiza la “decisión” final?**")
-    st.markdown("**R:** El muestreador a la salida del correlador, que compara el estadístico con el umbral (aquí 0).")
 
 # ----------------------------
 # Ejemplo 2 — BPSK
@@ -582,9 +544,7 @@ def render_ejemplo2():
         st.info("Pulsa **Simular** para generar la curva BER de BPSK.")
         return
 
-    # ----------------- helpers para que NO se vea “opaco” en dark -----------------
-    def _force_plotly_readable(fig, height=420):
-        # Fuerza estilo claro independiente del tema de Streamlit
+    def _force_plotly_readable_local(fig, height=420):
         fig.update_layout(
             template="plotly_white",
             height=height,
@@ -595,7 +555,6 @@ def render_ejemplo2():
             hoverlabel=dict(bgcolor="white", font_color="black"),
             margin=dict(l=60, r=20, t=70, b=55),
         )
-
         fig.update_xaxes(
             showline=True,
             linecolor="black",
@@ -604,7 +563,6 @@ def render_ejemplo2():
             tickfont=dict(color="black"),
             title=dict(font=dict(color="black")),
         )
-
         fig.update_yaxes(
             showline=True,
             linecolor="black",
@@ -613,12 +571,9 @@ def render_ejemplo2():
             tickfont=dict(color="black"),
             title=dict(font=dict(color="black")),
         )
-
-        # títulos de subplots/anotaciones (si existen)
         if hasattr(fig.layout, "annotations") and fig.layout.annotations:
             for ann in fig.layout.annotations:
                 ann["font"] = dict(color="black")
-
         return fig
 
     seed = st.session_state.get("g5_e2_seed", 22222)
@@ -628,9 +583,8 @@ def render_ejemplo2():
     ebn0_dB = np.arange(float(ebn0_min), float(ebn0_max) + 1e-9, float(step_db))
     EbN0_lin = 10 ** (ebn0_dB / 10.0)
 
-    # Bits una sola vez (misma secuencia para todo el barrido)
     b = rng.integers(0, 2, size=Nbits)
-    a = 2*b - 1  # {+1,-1}
+    a = 2*b - 1
     s = a * math.sqrt(Eb)
 
     ber_sim = np.zeros_like(EbN0_lin, dtype=float)
@@ -644,9 +598,8 @@ def render_ejemplo2():
 
     ber_th = ber_teorica_bpsk(EbN0_lin)
 
-    # ---- FIX del “pico vertical” en escala log: cuando BER_sim = 0 (0 errores) ----
     ber_sim_plot = ber_sim.copy()
-    piso_plot = 1.0 / float(Nbits)  # cota típica cuando no se observa ningún error
+    piso_plot = 1.0 / float(Nbits)
     zero_mask = (ber_sim_plot <= 0.0)
     ber_sim_plot[zero_mask] = piso_plot
     n_zeros = int(np.sum(zero_mask))
@@ -665,13 +618,12 @@ def render_ejemplo2():
         fig.update_yaxes(type="log", title_text="BER (log)")
         fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
 
-        # Si usas tu helper, ok; pero igual forzamos estilo legible después
         try:
             _plotly_layout(fig, "BPSK en AWGN: BER vs $E_b/N_0$", height=420, showlegend=True)
         except Exception:
             fig.update_layout(title="BPSK en AWGN: BER vs $E_b/N_0$")
 
-        _force_plotly_readable(fig, height=420)
+        _force_plotly_readable_local(fig, height=420)
         st.plotly_chart(fig, use_container_width=True)
 
         if n_zeros > 0:
@@ -706,7 +658,7 @@ def render_ejemplo2():
             except Exception:
                 figH.update_layout(title=f"Histogramas (BPSK) para $E_b/N_0$={float(punto_hist):.1f} dB")
 
-            _force_plotly_readable(figH, height=380)
+            _force_plotly_readable_local(figH, height=380)
             st.plotly_chart(figH, use_container_width=True)
 
     st.markdown("##### Explicación de la simulación")
@@ -740,6 +692,7 @@ def render_ejemplo2():
     st.markdown("**R:** Porque el conteo de errores es aleatorio: con pocos o cero errores observados, la estimación tiene alta incertidumbre y requiere más bits.")
     st.markdown("**4. ¿Por qué aparece una caída vertical rara en la curva simulada (cuando pasa)?**")
     st.markdown("**R:** Ocurre cuando la BER simulada es 0 (no hubo errores). En escala log, 0 no se puede representar, por eso se usa un piso (≈1/Nbits) solo para graficar.")
+
 
 # ----------------------------
 # Ejemplo 3 — BFSK
@@ -785,23 +738,14 @@ def render_ejemplo3():
     Eb = 1.0
     Tb = float(Tb_ms) * 1e-3
 
-    # rho según tu modelo
     rho = rho_bfsk(float(fd), Tb)
     rho_clip = min(0.999999, max(-0.999999, float(rho)))
-    term = max(0.0, 1.0 - rho_clip)
-
-    # Punto “ortogonal” aproximado (cuando rho ~ 0) con este modelo:
-    # rho = sin(4π fd Tb)/(4π fd Tb)  -> rho=0 cuando 4π fd Tb = π -> fd = 1/(4Tb)
-    fd_ortho = 1.0 / (4.0 * Tb)
 
     ebn0_dB = np.arange(float(ebn0_min), float(ebn0_max) + 1e-9, float(step_db))
     EbN0_lin = 10 ** (ebn0_dB / 10.0)
 
-    # Teóricas
     ber_th_bfsk = ber_teorica_bfsk(EbN0_lin, float(fd), Tb)
-    ber_th_bpsk = ber_teorica_bpsk(EbN0_lin)  # referencia comparativa
 
-    # Simulación en espacio 2D (modelo por correlación)
     u0 = np.array([1.0, 0.0])
     u1 = np.array([rho_clip, math.sqrt(max(0.0, 1.0 - rho_clip**2))])
     s0 = math.sqrt(Eb) * u0
@@ -823,8 +767,6 @@ def render_ejemplo3():
 
     with col2:
         fig = go.Figure()
-
-        # BFSK
         fig.add_trace(go.Scatter(
             x=ebn0_dB, y=ber_th_bfsk, mode="lines",
             name="BFSK teórica", line=dict(color="#1f77b4", width=3)
@@ -835,21 +777,15 @@ def render_ejemplo3():
             marker=dict(size=7)
         ))
 
-
-
         fig.update_yaxes(type="log", title_text="BER (log)")
         fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
 
-        _plotly_layout(fig, "BFSK : BER vs $E_b/N_0$ (con referencia BPSK)", height=440, showlegend=True)
-        _force_plotly_readable(fig, height=440)  # <-- evita lo opaco en dark theme
+        _plotly_layout(fig, "BFSK : BER vs $E_b/N_0$", height=440, showlegend=True)
+        _force_plotly_readable(fig, height=440)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("##### Explicación de la simulación")
-
-    st.markdown(
-        "Para **BFSK** la **BEP** está dada por la ecuación:"
-    )
-
+    st.markdown("Para **BFSK** la **BEP** está dada por la ecuación:")
     st.latex(
         r"P(E)=\frac{1}{2}\,\mathrm{erfc}\!\left(\sqrt{\frac{E_b}{2N_0}\left[1-\frac{\sin\left(4\pi f_d T_b\right)}{4\pi f_d T_b}\right]}\right)"
     )
@@ -857,26 +793,14 @@ def render_ejemplo3():
     st.markdown(
         "**BFSK** es una modulación binaria donde el bit 0 y el bit 1 se transmiten con **dos frecuencias distintas**.\n"
         "- En detección, el receptor calcula dos correlaciones (una por cada frecuencia) y decide por la mayor.\n"
-        "- **Comparación con BPSK:** en detección óptima y para el mismo $E_b/N_0$, **BPSK suele ser mejor** (menor BER) porque usa señales **antipodales** (más separación en espacio de señales).\n"
-        "  En cambio, BFSK típicamente requiere **más ancho de banda** y, si no es ortogonal ($\\rho\\neq 0$), puede degradarse más. \n\n"
-        "**Aplicaciones típicas:** telemetría y enlaces de baja complejidad, radios/telemando en bandas angostas, comunicaciones en ambientes con no linealidades "
-        "(amplificadores eficientes), y sistemas donde se prioriza **robustez** y **simplicidad** del receptor."
-
-
-    )
-
-    st.markdown("##### BPSK vs BFSK: ¿cuál es mejor y por qué?")
-    st.markdown(
-        "- **En desempeño (BER vs $E_b/N_0$):** con recepción , **BPSK es más eficiente en energía** (logra menor BER con el mismo $E_b/N_0$).\n"
-        "- **En práctica:** BFSK puede ser atractivo si se quiere una señal de **envolvente más constante** o receptores más simples, pero paga en **ancho de banda** y/o en BER.\n"
-        "- Por eso, si el objetivo es **mínima BER con mínimo $E_b/N_0$**, normalmente **BPSK** es la mejor elección; si el objetivo es **robustez de implementación o amplificación**, BFSK puede ser conveniente."
-
+        "- **Comparación con BPSK:** en detección óptima y para el mismo $E_b/N_0$, **BPSK suele ser mejor** (menor BER) porque usa señales **antipodales**.\n"
+        "  En cambio, BFSK típicamente requiere **más ancho de banda** y, si no es ortogonal ($\\rho\\neq 0$), puede degradarse más.\n"
     )
 
     st.markdown("##### Preguntas y respuestas")
-
     st.markdown("**1. ¿Por qué BPSK suele superar a BFSK en BER para el mismo $E_b/N_0$?**")
     st.markdown("**R:** Porque BPSK usa señales antipodales (máxima separación en espacio de señales), lo que reduce la probabilidad de confusión bajo ruido gaussiano; BFSK depende de qué tan ortogonales sean sus señales (ρ).")
+
 
 # ----------------------------
 # Dinámicas (evaluación)
