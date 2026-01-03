@@ -88,7 +88,11 @@ def upload_file_to_github(local_path, path_in_repo):
         return False
 
 
-LOGO_UCA_PATH = "Logo_UCA_2015.jpg"
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+LOGO_UCA_PATH = str(BASE_DIR / "assets" / "logo_uca.png")
+
 TEMA_TG = (
     "Introducción a la caracterización y tratamiento matemático del ruido "
     "en sistemas de telecomunicaciones digitales"
