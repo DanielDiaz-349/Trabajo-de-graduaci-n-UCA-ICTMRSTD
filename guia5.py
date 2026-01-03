@@ -6,10 +6,9 @@ Notas:
 - Diseñado para integrarse al proyecto de guías en Streamlit.
 - Gráficas interactivas con Plotly (zoom, pan, hover con valores).
 """
-import os
-
 from __future__ import annotations
 
+import os
 import math
 from typing import Any, Dict, Tuple
 
