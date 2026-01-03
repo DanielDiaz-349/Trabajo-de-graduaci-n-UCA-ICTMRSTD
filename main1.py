@@ -2058,11 +2058,6 @@ def render_dinamicas_guia1():
 
     st.markdown("---")
 
-    # -------- ENVÍO FINAL (ÚNICO BOTÓN) --------
-if st.button("Enviar respuestas (generar PDF)"):
-    if not state["dyn1"]["completed"] or not state["dyn2"]["completed"]:
-        st.error("Debes completar ambas dinámicas antes de enviar.")
-        st.stop()
 
     # ... (todo tu cálculo de resultados queda igual)
 
@@ -2104,52 +2099,87 @@ if st.button("Enviar respuestas (generar PDF)"):
 
 
 
-def render_resumen_dinamicas_guia1():
-    st.subheader("Enviar respuestas Guia 1")
+def render_dinamicas_guia1():
+    # Asegúrate de tener "state" inicializado aquí (session_state o tu init)
+    state = st.session_state.get("g1_state")
+    if state is None:
+        state = {
+            "student": {"id": "sin_id"},
+            "dyn1": {"completed": False, "answers": {}},
+            "dyn2": {"completed": False, "answers": {}, "key": None},
+        }
+        st.session_state["g1_state"] = state
 
-    student_info = st.session_state.get("student_info")
-    if not student_info:
-        st.info("Primero completa el registro en alguna de las dinámicas (nombre, carné, fecha de nacimiento).")
-        return
+    # -------- DINÁMICA 1 --------
+    with st.expander("Dinámica 1 — ...", expanded=True):
+        # ... tu código de dinámica 1 ...
+        # al final: state["dyn1"]["completed"] = True/False
+        pass
 
-    res1 = st.session_state.get("g1_dyn1_result")
-    res2 = st.session_state.get("g1_dyn2_result")
+    st.markdown("---")
 
-    faltan = []
-    if res1 is None:
-        faltan.append("Dinámica 1")
-    if res2 is None:
-        faltan.append("Dinámica 2")
+    # -------- DINÁMICA 2 --------
+    with st.expander("Dinámica 2 — Intermodulación", expanded=True):
+        if state["dyn2"]["key"] is None:
+            state["dyn2"]["key"] = generate_dyn2_key()
+        key2 = state["dyn2"]["key"]
 
-    if faltan:
-        st.warning("Aún faltan por completar: " + ", ".join(faltan))
-        return
+        # ... TODO tu código de dinámica 2 (plots y preguntas) ...
+        q1 = st.radio("Tipo de distorsión:", ["Armónica", "Intermodulación"], index=None, key="g1_dyn2_q1")
+        q2 = st.radio("¿Qué ocurre al aumentar k3?", ["Disminuyen", "Aumentan"], index=None, key="g1_dyn2_q2")
+        q3 = st.radio("¿Los productos IM3 pueden caer en banda?", ["Sí", "No"], index=None, key="g1_dyn2_q3")
 
-    st.markdown("Todas las dinámicas de la Guía 1 están completadas. Puedes enviar las respuestas para generar el PDF.")
+        state["dyn2"]["answers"] = {"q1": q1, "q2": q2, "q3": q3}
+        state["dyn2"]["completed"] = all(v is not None for v in state["dyn2"]["answers"].values())
 
-    total_score = res1["score"] + res2["score"]
-    promedio = total_score / 2.0
+        if state["dyn2"]["completed"]:
+            st.success("Dinámica 2 lista.")
+        else:
+            st.info("Selecciona una opción en cada pregunta para completar la Dinámica 2.")
 
-    if st.button("Generar y enviar PDF de la Guía 1"):
+    st.markdown("---")
+
+    # -------- ENVÍO FINAL (ÚNICO BOTÓN) --------
+    disabled = not (state["dyn1"]["completed"] and state["dyn2"]["completed"])
+    if st.button("Enviar respuestas (generar PDF)", key="g1_send_pdf", disabled=disabled):
+        # aquí ya estás seguro que ambas dinámicas están completas
+        # ... (todo tu cálculo de resultados queda igual) ...
+
         pdf_path = export_results_pdf_guia1(
-            filename_base=f"guia1_{student_info.get('id', 'sin_id')}",
-            student_info=student_info,
-            resultados=[res1, res2],
+            filename_base=f"guia1_{state['student'].get('id', 'sin_id')}",
+            student_info=state["student"],
+            resultados=resultados,
         )
 
-        # Nombre del archivo en el repositorio: carpeta guia1/
+        if not REPORTLAB_AVAILABLE:
+            st.error("No se puede generar el PDF porque ReportLab no está instalado.")
+            st.stop()
+        if not pdf_path or not os.path.exists(pdf_path):
+            st.error(f"No se pudo generar el PDF en disco. Ruta esperada:\n{pdf_path}")
+            st.stop()
+
+        with open(pdf_path, "rb") as f:
+            st.download_button(
+                "Descargar PDF",
+                data=f.read(),
+                file_name=os.path.basename(pdf_path),
+                mime="application/pdf",
+                key="g1_download_pdf",
+            )
+
         nombre_pdf_repo = os.path.basename(pdf_path)
         ruta_repo = f"guia1/{nombre_pdf_repo}"
 
-        ok = upload_file_to_github(pdf_path, ruta_repo)
+        ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
 
         if ok:
-            st.success("PDF generado y enviado correctamente a GitHub.")
-            st.write("Ruta local del PDF:", pdf_path)
+            st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
+            if isinstance(info, str) and info.startswith("http"):
+                st.link_button("Ver archivo en GitHub", info)
             st.write("Ruta en el repositorio:", ruta_repo)
         else:
-            st.error("El PDF se generó, pero hubo un problema al enviarlo a GitHub. Revisa la consola del servidor.")
-            st.write("Ruta local del PDF:", pdf_path)
+            st.error(f"El PDF se generó, pero falló el envío a GitHub: {info}")
+
 
 
 # ---------- GUÍA 1 COMPLETA EN STREAMLIT ----------
