@@ -463,35 +463,36 @@ def render_ejemplo1():
             f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
         )
 
-        st.markdown("##### Explicación de la simulación")
-        st.markdown(
-            "- **$E_b$ (energía por bit):** es la energía promedio invertida para transmitir **un bit**. "
-            "Se obtiene integrando la energía de la señal en el intervalo de bit: "
-            "$$E_b=\\int_0^{T_b} s^2(t)\\,dt.$$ "
-            "A mayor $E_b$, el bit llega “más fuerte” al receptor.\n"
-            "- **$N_0$ (densidad espectral de potencia del ruido):** mide cuánta potencia de ruido hay por cada Hz (W/Hz) en AWGN. "
-            "Para ruido blanco, la PSD es aproximadamente constante y suele expresarse como $N_0/2$ en banda base. "
-            "A mayor $N_0$, el canal es “más ruidoso”.\n"
-            "- **Relación $E_b/N_0$:** es una SNR normalizada por bit que compara la energía útil contra la intensidad del ruido. "
-            "Si $E_b/N_0$ aumenta, disminuye la probabilidad de error (BER); si baja, el ruido domina y aparecen más errores. \n"
-            "- Un correlador es un bloque del receptor que mide qué tan parecida es la señal recibida a una señal de referencia que el receptor “espera” recibir. \n"
+    st.markdown("##### Explicación de la simulación")
+        
+    st.markdown(
+        "- **$E_b$ (energía por bit):** es la energía promedio invertida para transmitir **un bit**. "
+        "Se obtiene integrando la energía de la señal en el intervalo de bit: "
+        "$$E_b=\\int_0^{T_b} s^2(t)\\,dt.$$ "
+        "A mayor $E_b$, el bit llega “más fuerte” al receptor.\n"
+        "- **$N_0$ (densidad espectral de potencia del ruido):** mide cuánta potencia de ruido hay por cada Hz (W/Hz) en AWGN. "
+        "Para ruido blanco, la PSD es aproximadamente constante y suele expresarse como $N_0/2$ en banda base. "
+        "A mayor $N_0$, el canal es “más ruidoso”.\n"
+        "- **Relación $E_b/N_0$:** es una SNR normalizada por bit que compara la energía útil contra la intensidad del ruido. "
+        "Si $E_b/N_0$ aumenta, disminuye la probabilidad de error (BER); si baja, el ruido domina y aparecen más errores. \n"
+        "- Un correlador es un bloque del receptor que mide qué tan parecida es la señal recibida a una señal de referencia que el receptor “espera” recibir. \n"
         )
 
-        st.markdown(
-            "- En la gráfica (2), la señal **modulada es analógica** porque es una **onda continua** (portadora) cuya fase cambia según el bit.\n"
-            "- En la gráfica (3), el canal agrega **ruido AWGN**: al bajar $E_b/N_0$ el ruido domina y la señal se distorsiona más.\n"
-            "- En la gráfica (4), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
-            "si $y_k>0$ decide 1, si $y_k<0$ decide 0.\n"
-            "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
+    st.markdown(
+        "- En la gráfica (2), la señal **modulada es analógica** porque es una **onda continua** (portadora) cuya fase cambia según el bit.\n"
+        "- En la gráfica (3), el canal agrega **ruido AWGN**: al bajar $E_b/N_0$ el ruido domina y la señal se distorsiona más.\n"
+        "- En la gráfica (4), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
+        "si $y_k>0$ decide 1, si $y_k<0$ decide 0.\n"
+        "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
         )
 
-        st.markdown("##### Preguntas y respuestas")
-        st.markdown("**1. ¿Por qué la señal de la gráfica (2) es analógica aunque transmita bits?**")
-        st.markdown("**R:** Porque la información binaria se representa mediante un **parámetro continuo** de una onda (fase/amplitud) en el tiempo continuo.")
-        st.markdown("**2. ¿Qué efecto tiene disminuir $E_b/N_0$?**")
-        st.markdown("**R:** Aumenta la potencia relativa del ruido frente a la energía por bit, haciendo más probable que el estadístico cambie de signo y se detecte mal el bit.")
-        st.markdown("**3. ¿Qué bloque del receptor realiza la “decisión” final?**")
-        st.markdown("**R:** El muestreador a la salida del correlador, que compara el estadístico con el umbral (aquí 0).")
+    st.markdown("##### Preguntas y respuestas")
+    st.markdown("**1. ¿Por qué la señal de la gráfica (2) es analógica aunque transmita bits?**")
+    st.markdown("**R:** Porque la información binaria se representa mediante un **parámetro continuo** de una onda (fase/amplitud) en el tiempo continuo.")
+    st.markdown("**2. ¿Qué efecto tiene disminuir $E_b/N_0$?**")
+    st.markdown("**R:** Aumenta la potencia relativa del ruido frente a la energía por bit, haciendo más probable que el estadístico cambie de signo y se detecte mal el bit.")
+    st.markdown("**3. ¿Qué bloque del receptor realiza la “decisión” final?**")
+    st.markdown("**R:** El muestreador a la salida del correlador, que compara el estadístico con el umbral (aquí 0).")
 
 
 # ----------------------------
