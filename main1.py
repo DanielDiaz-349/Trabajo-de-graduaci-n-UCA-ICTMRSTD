@@ -2062,7 +2062,7 @@ def render_dinamicas_guia1():
 if st.button("Enviar respuestas (generar PDF)"):
     if not state["dyn1"]["completed"] or not state["dyn2"]["completed"]:
         st.error("Debes completar ambas dinámicas antes de enviar.")
-        return
+        st.stop()
 
     # ... (todo tu cálculo de resultados queda igual)
 
