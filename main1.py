@@ -28,7 +28,7 @@ def add_uca_logo_to_ui():
     Coloca el logo de la UCA en la esquina inferior izquierda
     con opacidad ~0.4 en toda la interfaz de Streamlit.
     """
-    logo_path = LOGO_UCA_PATH  # usamos la misma constante
+    logo_path = LOGO_UCA_PATH
     if not os.path.exists(logo_path):
         return
 
@@ -40,17 +40,18 @@ def add_uca_logo_to_ui():
     <style>
     .uca-logo-fixed {{
         position: fixed;
-        right: 10px;
+        left: 10px;
         bottom: 10px;
-        width: 70px;            /* ajusta tamaño si quieres */
+        width: 70px;
         opacity: 0.4;
         z-index: 100;
+        pointer-events: none;
     }}
     </style>
-    <img class="uca-logo-fixed" src="data:image/jpeg;base64,{encoded}">
+    <img class="uca-logo-fixed" src="data:image/png;base64,{encoded}">
     """
-    import streamlit as st
     st.markdown(html, unsafe_allow_html=True)
+
 def upload_file_to_github(local_path, path_in_repo):
     """
     Sube un archivo local a un repositorio de GitHub usando la API.
