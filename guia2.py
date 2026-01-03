@@ -1369,9 +1369,9 @@ def _g2_student_ready() -> bool:
 def _g2_student_form():
     """Formulario único de estudiante para todas las dinámicas de la Guía 2."""
     if "student_info" not in st.session_state:
-        st.session_state.student_info = {"name": "", "id": "", "dob": ""}
+        st.session_state["student_info"] = {"name": "", "id": "", "dob": ""}
 
-    info = st.session_state.student_info
+    info = st.session_state["student_info"]
 
     st.subheader("Datos del estudiante")
 
@@ -1385,7 +1385,11 @@ def _g2_student_form():
         if not name.strip() or not sid.strip() or not dob.strip():
             st.error("Completa nombre, carné y fecha de nacimiento.")
         else:
-            st.session_state.student_info = {"name": name.strip(), "id": sid.strip(), "dob": dob.strip()}
+            st.session_state["student_info"] = {
+                "name": name.strip(),
+                "id": sid.strip(),
+                "dob": dob.strip(),
+            }
             st.success("Datos guardados correctamente.")
 
     if not _g2_student_ready():
