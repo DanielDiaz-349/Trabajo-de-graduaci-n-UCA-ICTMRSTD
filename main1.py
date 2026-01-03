@@ -251,6 +251,11 @@ BER= número de bits erróneos / total de bits recibidos
 
 """
 
+MATERIALES_TEXT= """
+Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
+
+- Dispositivo con acceso a internet.
+"""
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
 
 - A través de los ejemplos prácticos incluidos, el estudiante pudo visualizar de forma gráfica y cuantitativa tanto el impacto del ruido aditivo como la generación de productos de intermodulación en sistemas multiseñal. La comparación entre distintos canales guiados e inalámbricos evidenció que cada medio introduce degradaciones particulares, por lo que el diseño de sistemas modernos exige considerar modelos precisos de ruido, características físicas del canal y técnicas de mitigación orientadas a preservar la integridad de la información transmitida.
