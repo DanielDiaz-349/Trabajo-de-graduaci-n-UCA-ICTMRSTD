@@ -171,7 +171,7 @@ def add_uca_logo_to_ui():
     .uca-logo-fixed {{
         position: fixed;
         right: 10px;
-        top: 10px;
+        top: 40px;
         width: 70px;
         opacity: 0.4;
         z-index: 100;
