@@ -491,7 +491,7 @@ with col2:
 
     st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        st.markdown(
+    st.markdown(
             f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
             f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
         )
