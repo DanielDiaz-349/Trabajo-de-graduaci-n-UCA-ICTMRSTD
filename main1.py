@@ -590,6 +590,25 @@ def export_results_pdf_guia1(filename_base, student_info, resultados):
 # EJEMPLOS (1–3)
 # =========================
 def render_ejemplo1():
+    """
+    Ejemplo 1:
+    - Gráfica 1: señal digital NRZ.
+    - Gráfica 2: ruido AWGN.
+    - Gráfica 3: señal + ruido (con posible retardo).
+    Parámetros a modificar:
+      - Número de bits
+      - Retardo debido al canal (fracción de T)
+      - Nivel lógico 0
+      - Nivel lógico 1
+      - Período T del bit (s)
+    """
+
+
+
+    # Estado de zoom para el Ejemplo 1
+    if "ej1_zoom" not in st.session_state:
+        st.session_state.ej1_zoom = 1.0  # 1.0 = ver toda la señal
+
     st.markdown("### Ejemplo 1 - Señal digital y ruido AWGN")
 
     if "ej1_state" not in st.session_state:
@@ -607,15 +626,19 @@ def render_ejemplo1():
     with st.expander("Descripcion y pasos", expanded=True):
         st.markdown(
             "**Pasos sugeridos**\n"
-            "1. Selecciona el número de bits y niveles lógicos.\n"
-            "2. Ajusta SNR y retardo.\n"
-            "3. Ajusta el período del bit.\n"
-            "4. Genera señal, ruido, combina y luego calcula BER."
+            "1. Selecciona el **número de bits** y los **niveles lógicos** de la señal.\n"
+            "2. Ajusta la **SNR** y el **retardo T** en el canal\n"
+            "3. Ajusta el **periodo T2** para cambiar el periodo de la señal de entrada.\n"
+            "4. Pulsa **Generar señal** para crear el tren de pulsos.\n"
+            "5. Pulsa **Generar ruido** para crear el ruido AWGN\n"
+            "6. Pulsa **Combinar** para sumar señal y ruido y verifica la retroalimentación. Tambien puedes hacer zoom y verificar partes especificas de la señal\n"
+            "7. Finalmente, pulsa **Calcular BER** para estimar la fracción de bits erróneos y verifica la retroalimentación."
         )
 
     col1, col2 = st.columns(2)
+
     with col1:
-        nbits = st.number_input("Número de bits", min_value=1, max_value=50000, value=50, step=50)
+        nbits = st.number_input("Número de bits", min_value=1, max_value=50000, value=50, step=100)
         lvl0 = st.number_input("Nivel lógico 0", value=0.0)
         lvl1 = st.number_input("Nivel lógico 1", value=1.0)
 
@@ -629,6 +652,7 @@ def render_ejemplo1():
         combine_clicked = b3.button("Combinar")
         ber_clicked = b4.button("Calcular BER")
 
+    # Lógica de botones
     if gen_signal_clicked:
         bits = np.random.randint(0, 2, size=int(nbits))
         fs = 2000
@@ -655,251 +679,529 @@ def render_ejemplo1():
         if state["tx"].size == 0:
             st.warning("Primero genera la señal.")
         else:
+            # Si no hay ruido previo, se genera con la SNR actual
             if state["noise"].size == 0 or not np.any(state["noise"]):
-                state["noise"] = generar_ruido_awgn(state["tx"], snr)
-            rx = state["tx"] + state["noise"]
+                noise = generar_ruido_awgn(state["tx"], snr)
+                state["noise"] = noise
+            else:
+                noise = state["noise"]
+
+            rx = state["tx"] + noise
             delay_samples = int(round(delay_frac * state["Tb"] * state["fs"]))
             if delay_samples > 0:
-                rx = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
-            state["rx"] = rx
+                rx_del = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
+            else:
+                rx_del = rx
+            state["rx"] = rx_del
             st.success("Señal + ruido combinados correctamente.")
+
+            with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
+                st.markdown(
+                    "Al sumar la señal digital con el ruido AWGN se obtiene una forma de onda en la que los niveles lógicos "
+                    "dejaron de ser perfectamente planos y aparecen fluctuaciones aleatorias a su alrededor . "
+                    "El retardo T aplicado  desplaza la señal recibida en el tiempo, emulando el efecto de un "
+                    "canal con tiempo de propagación no nulo.\n"
+                )
+                st.markdown(
+                    "**Preguntas y respuestas:**\n\n"
+                    "1. **¿Qué ocurre con la forma de la señal cuando la SNR disminuye?**  \n"
+                    "   **R:** La señal útil se ve más inmersa en el ruido, los niveles lógicos se vuelven menos distinguibles "
+                    "y aumenta la probabilidad de confundir un 0 con un 1.\n\n"
+                    "2. **¿Qué representa el retardo aplicado a la señal recibida?**  \n"
+                    "   **R:** Representa el efecto del canal sobre el tiempo de llegada de la señal, asociado a la propagación "
+                    "en el medio, dispersión o retardos introducidos por diferentes dispositivos o filtros.\n\n"
+                    "3. **¿Por qué es razonable modelar el ruido como AWGN en este tipo de simulaciones?**  \n"
+                    "   **R:** Porque el ruido térmico y muchas perturbaciones pequeñas e independientes pueden modelarse con "
+                    "una distribución gaussiana y espectro aproximadamente plano en el ancho de banda de interés."
+                )
 
     if ber_clicked:
         if state["bits"].size == 0:
             st.warning("Genera primero la señal.")
         else:
-            state["noise"] = generar_ruido_awgn(state["tx"], snr)
-            rx = state["tx"] + state["noise"]
+            # Se regenera ruido y señal+ruido con la SNR y retardo actuales
+            noise = generar_ruido_awgn(state["tx"], snr)
+            state["noise"] = noise
+            rx = state["tx"] + noise
             delay_samples = int(round(delay_frac * state["Tb"] * state["fs"]))
             if delay_samples > 0:
-                rx = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
-            state["rx"] = rx
+                rx_del = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
+            else:
+                rx_del = rx
+            state["rx"] = rx_del
 
             thr = (lvl0 + lvl1) / 2.0
-            decisions = regenerador_muestreo(state["rx"], len(state["bits"]), state["fs"], state["Tb"], delay_samples, thr)
+            decisions = regenerador_muestreo(
+                state["rx"],
+                len(state["bits"]),
+                state["fs"],
+                state["Tb"],
+                delay_samples,
+                thr
+            )
             errors, L, ber = calcular_BER(state["bits"], decisions)
             st.success(f"Bits comparados: {L} | Errores: {errors} | BER = {ber:.2e}")
 
+            with st.expander("Explicación de la simulación y preguntas (BER)", expanded=True):
+                st.markdown(
+                    "La BER (Bit Error Rate) se calcula comparando bit a bit la secuencia transmitida con la secuencia "
+                    "detectada en el receptor. Un valor de BER cercano a cero indica que la mayoría de los bits se recuperan "
+                    "correctamente, un valor alto implica un sistema fuertemente degradado por el ruido.\n"
+                )
+                st.markdown(
+                    "**Preguntas y respuestas:**\n\n"
+                    "1. **¿Qué indica una BER pequeña (por ejemplo 10⁻⁶)?**  \n"
+                    "   **R:** Indica que solo una fracción pequeña de los bits se detecta de forma errónea, dependiendo del sistema "
+                    " y las regulaciones, puede o no representar un desempeño adecuado para servicios digitales.\n\n"
+                    "2. **¿Cómo afecta el SNR a la BER en un sistema digital?**  \n"
+                    "   **R:** A mayor SNR, la señal domina sobre el ruido y disminuye la probabilidad de que las muestras crucen "
+                    "el umbral por error, reduciendo la BER.\n\n"
+
+                )
+
+    # Gráficas
+    state = st.session_state.ej1_state
     with col2:
         t = state["t"]
         tx = state["tx"]
         noise = state["noise"]
         rx = state["rx"]
 
-        fig = make_subplots(rows=3, cols=1, shared_xaxes=False, vertical_spacing=0.16,
-                            subplot_titles=("Señal original", "Ruido AWGN", "Señal + ruido"))
+        fig = make_subplots(
+            rows=3,
+            cols=1,
+            shared_xaxes=False,
+            vertical_spacing=0.16,  # <-- MÁS ESPACIO ENTRE GRÁFICAS
+            subplot_titles=(
+                "Señal original",
+                "Ruido AWGN",
+                "Señal + ruido"
+            ),
+        )
 
+        # Colores azul uniforme
         blue = "blue"
-        if t.size and tx.size:
-            fig.add_trace(go.Scatter(x=t, y=tx, mode="lines", line=dict(color=blue)), row=1, col=1)
-        if t.size and noise.size:
-            fig.add_trace(go.Scatter(x=t, y=noise, mode="lines", line=dict(color=blue)), row=2, col=1)
-        if t.size and rx.size:
-            fig.add_trace(go.Scatter(x=t, y=rx, mode="lines", line=dict(color=blue)), row=3, col=1)
+
+        if t.size > 0 and tx.size > 0:
+            fig.add_trace(
+                go.Scatter(x=t, y=tx, mode="lines", line=dict(color=blue)),
+                row=1, col=1
+            )
+
+        if t.size > 0 and noise.size > 0:
+            fig.add_trace(
+                go.Scatter(x=t, y=noise, mode="lines", line=dict(color=blue)),
+                row=2, col=1
+            )
+
+        if t.size > 0 and rx.size > 0:
+            fig.add_trace(
+                go.Scatter(x=t, y=rx, mode="lines", line=dict(color=blue)),
+                row=3, col=1
+            )
+
+        # Etiquetas de ejes
 
         fig.update_xaxes(title_text="Tiempo (s)", row=3, col=1)
+
         fig.update_yaxes(title_text="Amplitud", row=1, col=1)
         fig.update_yaxes(title_text="Amplitud", row=2, col=1)
         fig.update_yaxes(title_text="Amplitud", row=3, col=1)
 
+        # Layout mejorado
         fig.update_layout(
-            height=750,
-            margin=dict(l=40, r=20, t=90, b=60),
+            height=750,  # <-- MÁS ALTO
+            margin=dict(l=40, r=20, t=90, b=60),  # <-- EVITA TRASLAPE
             hovermode="x unified",
             showlegend=False,
+            # ---- FORZAR FONDO BLANCO SIEMPRE ----
             paper_bgcolor="white",
             plot_bgcolor="white",
-            font=dict(color="black", size=12),
-            hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+            # ---- TEXTO SIEMPRE LEGIBLE ----
+            font=dict(
+                color="black",
+                size=12
+            ),
+
+            # ---- TITULO HOVER ----
+            hoverlabel=dict(
+                bgcolor="white",
+                font=dict(color="black")
+            ),
+
+        )
+        # ---- FORZAR ESTILO DE EJES (independiente del theme) ----
+        fig.update_xaxes(
+            showgrid=True,
+            gridcolor="lightgray",
+            zerolinecolor="black",
+            linecolor="black",
+            ticks="outside",
+            tickcolor="black",
+            tickfont=dict(color="black"),
+            title_font=dict(color="black"),
         )
 
-        fig.update_xaxes(showgrid=True, gridcolor="lightgray", zerolinecolor="black",
-                         linecolor="black", ticks="outside", tickcolor="black",
-                         tickfont=dict(color="black"), title_font=dict(color="black"))
-
-        fig.update_yaxes(showgrid=True, gridcolor="lightgray", zerolinecolor="black",
-                         linecolor="black", ticks="outside", tickcolor="black",
-                         tickfont=dict(color="black"), title_font=dict(color="black"))
-
+        fig.update_yaxes(
+            showgrid=True,
+            gridcolor="lightgray",
+            zerolinecolor="black",
+            linecolor="black",
+            ticks="outside",
+            tickcolor="black",
+            tickfont=dict(color="black"),
+            title_font=dict(color="black"),
+        )
+        # ---- FORZAR COLOR DE TÍTULOS DE SUBGRÁFICAS ----
         fig.update_annotations(font=dict(color="black", size=13))
+
         fig.update_xaxes(rangeslider_visible=True, row=3, col=1)
 
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
 def render_ejemplo2():
+    """
+    Ejemplo 2 — Distorsión por intermodulación (IMD) de tercer orden.
+    """
     st.markdown("### Ejemplo 2 - Distorsión por intermodulación")
 
+    # --- Descripción y pasos ---
     with st.expander("Descripción y pasos", expanded=True):
         st.markdown(
-            "Se simula una no linealidad cúbica: y = x + k3 x^3.\n"
-            "Aparecen productos IM3: 2f1-f2, 2f2-f1, 3f1, 3f2, 2f1+f2, 2f2+f1."
+            "En este ejemplo se simula un dispositivo no lineal de **tercer orden** que recibe "
+            "la suma de dos tonos senoidales de frecuencias f1 y f2. \n\n"
+            
+            "En particular, para una no linealidad cúbica aparecen productos de tercer orden:\n"
+            "- 2f1 - f2\n"
+            "- 2f2 - f1\n"
+            "- 3f1, 3f2\n"
+            "- 2f1 + f2, 2f2 + f1\n\n"
+            "**Pasos sugeridos:**\n"
+            "1. Ajusta las frecuencias **f1** y **f2** y sus amplitudes **A1** y **A2**.\n"
+            "2. Ajusta el coeficiente de no linealidad **k3**.\n"
+            "3. Pulsa **Generar y aplicar no linealidad**.\n"
+            "4. Observa el espectro antes y después de la no linealidad y la forma de onda en el tiempo de un canal adyacente afectado por la intermodulacion.\n"
+            "5. Verificar la retroalimentación de la simulación"
+
         )
 
-    col1, _ = st.columns([1, 1])
+    # --- Parámetros ---
+    col1, col2 = st.columns([1, 1])
+
     with col1:
-        f1 = st.number_input("Frecuencia f1 (Hz)", value=900.0, step=10.0, min_value=1.0, key="g1_ej2_f1")
-        f2 = st.number_input("Frecuencia f2 (Hz)", value=1100.0, step=10.0, min_value=1.0, key="g1_ej2_f2")
-        A1 = st.number_input("Amplitud A1", value=1.0, step=0.1, key="g1_ej2_A1")
-        A2 = st.number_input("Amplitud A2", value=1.0, step=0.1, key="g1_ej2_A2")
-        k3 = st.slider("Coeficiente k3", 0.0, 0.3, 0.05, 0.01, key="g1_ej2_k3")
+        f1 = st.number_input("Frecuencia f₁ (Hz)", value=900.0, step=10.0, min_value=1.0, key="g1_ej2_f1")
+        f2 = st.number_input("Frecuencia f₂ (Hz)", value=1100.0, step=10.0, min_value=1.0, key="g1_ej2_f2")
+        A1 = st.number_input("Amplitud A₁", value=1.0, step=0.1, key="g1_ej2_A1")
+        A2 = st.number_input("Amplitud A₂", value=1.0, step=0.1, key="g1_ej2_A2")
+        k3 = st.slider(
+            "Coeficiente de no linealidad k₃",
+            min_value=0.0,
+            max_value=0.3,
+            value=0.05,
+            step=0.01,
+            key="g1_ej2_k3"
+        )
         run = st.button("Generar y aplicar no linealidad", key="g1_ej2_run")
 
-    if not run:
-        return
 
-    fs = 32000
-    T = 0.03
-    t = np.arange(0, T, 1.0 / fs)
+    if run:
+        # --- Señales en el tiempo ---
+        fs = 32000  # frecuencia de muestreo
+        T = 0.03    # duración de la simulación (s)
+        t = np.arange(0, T, 1.0 / fs)
 
-    x_in = A1 * np.cos(2 * np.pi * f1 * t) + A2 * np.cos(2 * np.pi * f2 * t)
-    x_out = x_in + k3 * (x_in ** 3)
+        # Componentes de entrada
+        x1 = A1 * np.cos(2 * np.pi * f1 * t)
+        x2 = A2 * np.cos(2 * np.pi * f2 * t)
+        x_in = x1 + x2
 
-    N = len(t)
-    freq = np.fft.rfftfreq(N, 1.0 / fs)
-    X_in = np.abs(np.fft.rfft(x_in)) / N
-    X_out = np.abs(np.fft.rfft(x_out)) / N
+        # Dispositivo no lineal cúbico: y = x + k3 x^3
+        x_out = x_in + k3 * (x_in ** 3)
 
-    fmax_plot = max(f1, f2) * 4.0
+        # --- Espectros ---
+        N = len(t)
+        freq = np.fft.rfftfreq(N, 1.0 / fs)
+        X_in = np.abs(np.fft.rfft(x_in)) / N
+        X_out = np.abs(np.fft.rfft(x_out)) / N
 
-    fig1, ax1 = plt.subplots(figsize=(7, 3))
-    ax1.semilogy(freq, X_in + 1e-12)
-    ax1.set_xlim(0, fmax_plot)
-    ax1.set_xlabel("Frecuencia (Hz)")
-    ax1.set_ylabel("Magnitud (u.a.)")
-    ax1.set_title("Espectro antes de la no linealidad")
-    ax1.grid(True, linestyle=":")
-    fig1.tight_layout(pad=2.0)
-    st.pyplot(fig1)
+        fmax_plot = max(f1, f2) * 4.0  # rango básico suficiente para ver IM3 en la mayoría de casos
 
-    imd_freqs = {
-        "2f1-f2": 2 * f1 - f2,
-        "2f2-f1": 2 * f2 - f1,
-        "3f1": 3 * f1,
-        "3f2": 3 * f2,
-        "2f1+f2": 2 * f1 + f2,
-        "2f2+f1": 2 * f2 + f1,
-    }
+        # 1) Espectro ANTES de la no linealidad
+        fig1, ax1 = plt.subplots(figsize=(7, 3))
+        ax1.semilogy(freq, X_in + 1e-12)
+        ax1.set_xlim(0, fmax_plot)
+        ax1.set_xlabel("Frecuencia (Hz)")
+        ax1.set_ylabel("Magnitud (u.a.)")
+        ax1.set_title("Espectro antes de la no linealidad")
+        ax1.grid(True, linestyle=":")
+        fig1.tight_layout(pad=2.0)
+        st.pyplot(fig1)
 
-    fig2, ax2 = plt.subplots(figsize=(7, 3))
-    ax2.semilogy(freq, X_out + 1e-12)
-    ax2.set_xlim(0, fmax_plot)
-    ax2.set_xlabel("Frecuencia (Hz)")
-    ax2.set_ylabel("Magnitud (u.a.)")
-    ax2.set_title("Espectro después de la no linealidad")
-    ax2.grid(True, linestyle=":")
+        # --- Frecuencias de IMD de tercer orden ---
+        imd_freqs = {
+            "2f₁−f₂": 2 * f1 - f2,
+            "2f₂−f₁": 2 * f2 - f1,
+            "3f₁": 3 * f1,
+            "3f₂": 3 * f2,
+            "2f₁+f₂": 2 * f1 + f2,
+            "2f₂+f₁": 2 * f2 + f1,
+        }
 
-    for f_c, label in [(f1, "f1"), (f2, "f2")]:
-        if 0 < f_c < freq[-1]:
-            idx = np.argmin(np.abs(freq - f_c))
-            amp = X_out[idx] + 1e-12
-            ax2.text(freq[idx], amp * 1.3, label, ha="center", va="bottom", fontsize=7, rotation=90, color="black")
+        # 2) Espectro DESPUÉS de la no linealidad con etiquetas (sin puntos rojos/naranjas)
+        fig2, ax2 = plt.subplots(figsize=(7, 3))
+        ax2.semilogy(freq, X_out + 1e-12)
+        ax2.set_xlim(0, fmax_plot)
+        ax2.set_xlabel("Frecuencia (Hz)")
+        ax2.set_ylabel("Magnitud (u.a.)")
+        ax2.set_title("Espectro después de la no linealidad ")
+        ax2.grid(True, linestyle=":")
 
-    for label, f_imd in imd_freqs.items():
-        if 0 < f_imd < freq[-1]:
-            idx = np.argmin(np.abs(freq - f_imd))
-            amp = X_out[idx] + 1e-12
-            ax2.text(freq[idx], amp * 1.3, label, ha="center", va="bottom", fontsize=7, rotation=90, color="black")
+        # Etiquetar portadoras originales f1 y f2 (solo texto)
+        for f_c, label in [(f1, "f₁"), (f2, "f₂")]:
+            if 0 < f_c < freq[-1]:
+                idx = np.argmin(np.abs(freq - f_c))
+                amp = X_out[idx] + 1e-12
+                ax2.text(
+                    freq[idx],
+                    amp * 1.3,   # un poco arriba de la línea, sin irse al título
+                    label,
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    rotation=90,
+                    color="black"
+                )
 
-    fig2.tight_layout(pad=2.0)
-    st.pyplot(fig2)
+        # Etiquetar productos de IMD de tercer orden (solo texto, sin puntos)
+        for label, f_imd in imd_freqs.items():
+            if 0 < f_imd < freq[-1]:
+                idx = np.argmin(np.abs(freq - f_imd))
+                amp = X_out[idx] + 1e-12
+                ax2.text(
+                    freq[idx],
+                    amp * 1.3,
+                    label,
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    rotation=90,
+                    color="black"
+                )
+
+        fig2.tight_layout(pad=2.0)
+        st.pyplot(fig2)
+
+        # 3) Canal afectado por intermodulación (antes y después)
+        # Elegimos como "frecuencia de canal" uno de los productos IMD (por ejemplo 2f₁−f₂)
+        f_canal = imd_freqs["2f₁−f₂"]
+        if f_canal <= 0 or f_canal >= fs / 2:
+            # Si cae fuera de banda visible, usamos una frecuencia intermedia
+            f_canal = 0.5 * (f1 + f2)
+
+        A_canal = 1.0
+        canal_limpio = A_canal * np.cos(2 * np.pi * f_canal * t)
+
+        # Interferencia aproximada debida a todos los productos IMD dentro de banda
+        interferencia = np.zeros_like(t)
+        for f_imd in imd_freqs.values():
+            if 0 < f_imd < fs / 2:
+                interferencia += 0.3 * np.cos(2 * np.pi * f_imd * t)
+
+        canal_afectado = canal_limpio + interferencia
+
+        # Ventana corta (por ejemplo 5 ms) para apreciar la distorsión
+        N_win = int(0.005 * fs)
+        t_win = t[:N_win]
+        y_clean_win = canal_limpio[:N_win]
+        y_dist_win = canal_afectado[:N_win]
+
+        fig3, ax3 = plt.subplots(figsize=(7, 3))
+        ax3.plot(t_win, y_clean_win, label="Canal adyacente antes de la intermodulación")
+        ax3.plot(t_win, y_dist_win, label="Canal adyacente después de la intermodulación", alpha=0.8)
+        ax3.set_xlabel("Tiempo (s)")
+        ax3.set_ylabel("Amplitud")
+        ax3.set_title("Señal de un canal afectado por productos de intermodulación")
+        ax3.grid(True, linestyle=":")
+        ax3.legend(loc="upper right", fontsize=8)
+        fig3.tight_layout(pad=2.0)
+        st.pyplot(fig3)
+
+        # --- Explicación y preguntas ---
+        st.markdown("#### Explicación de la simulación y preguntas")
+
+        st.markdown(
+            "En la entrada, el espectro muestra solo dos líneas espectrales principales en f1 y f2. "
+            "Tras pasar por el dispositivo no lineal cúbico, aparecen nuevos componentes de frecuencia "
+            "asociados a productos de intermodulación de tercer orden.\n"
+        )
+
+        st.markdown(
+            "**Preguntas y respuestas:**\n\n"
+            "1. **¿Por qué aparecen nuevas líneas espectrales además de f1 y f2?**  \n"
+            "   **R:** Porque la no linealidad mezcla las señales de entrada, generando sumas y diferencias "
+            "de frecuencias (productos de intermodulación) además de armónicos.\n\n"
+            "2. **¿Por qué los productos 2f1 - f2 y 2f2 - f1 suelen ser críticos en sistemas multicanal?**  \n"
+            "   **R:** Porque pueden caer muy cerca de las portadoras útiles o dentro de canales adyacentes, "
+            "provocando interferencia entre servicios que comparten el mismo medio de transmisión.\n\n"
+            "3. **¿Qué representa la distorsión observada en la tercera gráfica?**  \n"
+            "   **R:** Representa un canal que inicialmente transportaba una señal sinusoidal limpia. "
+            "Cuando productos de intermodulación caen en esa banda, se suman a la señal útil y "
+            "modifican su forma en el tiempo, introduciendo distorsión y degradando la calidad.\n\n"
+            "4. **¿Qué efecto tiene aumentar k3 sobre los productos de intermodulación?**  \n"
+            "**R**: A medida que aumenta k3, la contribución cúbica es mayor y los productos de intermodulación incrementan su amplitud, lo que empeora la calidad de la señal y la coexistencia de múltiples canales.\n\n"
+            "5. **¿Por qué las magnitudes de los productos de intermodulación son menores a comparación de las magnitudes originales?**  \n"
+            "**R**: La menor magnitud de los productos de intermodulación se debe a que estos surgen de términos no lineales de orden superior en el modelo del dispositivo. En particular, los productos IM3 están ponderados por el coeficiente de no linealidad y por potencias de las amplitudes de las señales de entrada, lo que hace que su energía sea significativamente menor que la de las componentes fundamentales. Este comportamiento es consistente con el funcionamiento real de amplificadores en la región cuasi-lineal, donde la intermodulación existe pero se mantiene limitada."
+
+
+        )
+
 
 
 def channel_attenuation_curve(channel, freqs_hz, distance_m=1000.0):
+    """
+    Modelo simplificado de atenuación (dB) en función de la frecuencia (Hz)
+    para diferentes tipos de canal, a una cierta distancia en metros.
+    """
     freqs_hz = np.asarray(freqs_hz)
     dist_km = distance_m / 1000.0
     f_GHz = freqs_hz / 1e9
     f_MHz = freqs_hz / 1e6
 
     if channel == "Fibra óptica":
+        # Atenuación típica muy baja, casi constante con la frecuencia
+        # ~0.2 dB/km + término muy pequeño dependiente de f
         att_db_per_km = 0.2 + 0.02 * f_GHz
         total_db = att_db_per_km * dist_km
+
     elif channel == "Coaxial":
+        # Modelo simplificado: pérdidas aumentan con raíz y línea en frecuencia
+        # típico de cables coaxiales de RF
         att_db_per_km = 2.0 * np.sqrt(f_MHz) + 0.02 * f_MHz
         total_db = att_db_per_km * dist_km
+
     elif channel == "Guía de onda":
+        # Guía de onda metálica: buena para microondas, pérdidas moderadas
         att_db_per_km = 0.5 + 1.0 * f_GHz
         total_db = att_db_per_km * dist_km
+
     elif channel == "Par trenzado (UTP)":
+        # Modelo aproximado para UTP categoría telecom:
+        # pérdidas por 100 m ~ 1.8*sqrt(f_MHz) + 0.01*f_MHz  (dB/100m)
+        # lo convertimos a dB/km multiplicando por 10
         att_db_per_100m = 1.8 * np.sqrt(np.clip(f_MHz, 1e-3, None)) + 0.01 * f_MHz
         att_db_per_km = att_db_per_100m * 10.0
         total_db = att_db_per_km * dist_km
-    else:
+
+    else:  # "Espacio libre"
+        # Free-Space Path Loss (FSPL) en dB
         c = 3e8
         d = max(distance_m, 1.0)
         total_db = 20 * np.log10(4 * np.pi * d * freqs_hz / c + 1e-12)
 
     return total_db
 
-
 def describe_channel(chan: str) -> str:
     if chan == "Par trenzado (UTP)":
-        return ("la atenuación aumenta con la frecuencia debido a pérdidas resistivas y dieléctricas; "
-                "además crece con la distancia, lo que limita el alcance útil del enlace.")
+        return "la atenuación aumenta con la frecuencia debido a pérdidas resistivas y pérdidas dieléctricas , además, se incrementa con la distancia, lo que limita el alcance útil del enlace. Por ello, a frecuencias más altas y tramos más largos, el UTP presenta mayor debilitamiento de la señal y requiere categorías superiores o técnicas de compensación"
+
     if chan == "Fibra óptica":
-        return "presenta muy baja atenuación por km y gran inmunidad al ruido externo."
+        return "presenta muy baja atenuación por km y gran inmunidad al ruido externo, ideal para enlaces de alta capacidad."
     if chan == "Coaxial":
-        return "tiene una atenuación moderada que crece con la frecuencia."
+        return "tiene una atenuación moderada que crece con la frecuencia y es susceptible a pérdidas por conductor y dieléctrico."
     if chan == "Guía de onda":
-        return "opera típicamente en microondas, con bajas pérdidas en su banda útil."
+        return "opera típicamente en microondas, con bajas pérdidas pero limitada a ciertos rangos de frecuencia y modos de propagación."
+    if chan == "Línea de transmisión":
+        return "modela enlaces sobre pares metálicos, con pérdidas significativas y sensibilidad al ruido e interferencia."
     if chan == "Espacio libre":
-        return "la pérdida de trayectoria crece con la distancia y la frecuencia."
+        return "representa la propagación de ondas electromagnéticas sin guía física, con pérdidas que crecen con la distancia y la frecuencia de operación."
     return ""
 
-
 def render_ejemplo3():
+    """
+    Ejemplo 3:
+    - Comparar atenuación vs frecuencia para dos canales distintos.
+    """
     st.markdown("### Ejemplo 3 - Comparación de canales de transmisión")
 
     with st.expander("Descripción y pasos", expanded=True):
         st.markdown(
-            "Comparación de atenuación vs frecuencia para distintos canales.\n"
-            "1) Selecciona Canal A y B\n"
-            "2) Elige distancia\n"
-            "3) Define rango de frecuencias (MHz)\n"
-            "4) Simula"
+            "En este ejemplo se comparan canales de propagación de ondas electromagnéticas guiadas y enlaces ópticos "
+            "en función de la frecuencia y la distancia.\n\n"
+            "**Pasos sugeridos**\n"
+            "1. Selecciona **Canal A** y **Canal B**.\n"
+            "2. Define la **distancia** del enlace en metros.\n"
+            "3. Especifica el rango de **frecuencias** a analizar (en MHz).\n"
+            "4. Pulsa **Simular comparación** para visualizar las curvas de atenuación.\n"
+            "5. Verficar la retroalimentación"
         )
 
     col1, col2 = st.columns([1, 2])
+
+    # Lista de canales (cambiamos "Línea de transmisión" por "Par trenzado (UTP)")
     canales = ["Fibra óptica", "Coaxial", "Guía de onda", "Par trenzado (UTP)", "Espacio libre"]
 
     with col1:
         chanA = st.selectbox("Canal A", canales, index=0)
         chanB = st.selectbox("Canal B", canales, index=1)
         dist_m = st.number_input("Distancia (m)", min_value=1.0, value=1000.0, step=100.0)
+
+        # AHORA EN MHz
         fstart_MHz = st.number_input("Frecuencia inicio (MHz)", value=1.0)
         fend_MHz = st.number_input("Frecuencia fin (MHz)", value=1000.0)
         npts = st.number_input("Número de puntos", min_value=10, max_value=2000, value=200, step=10)
         run = st.button("Simular comparación")
 
-    if not run:
-        return
+    if run:
+        try:
+            if fstart_MHz <= 0 or fend_MHz <= 0 or fend_MHz <= fstart_MHz or npts <= 2 or dist_m <= 0:
+                raise ValueError
+        except Exception:
+            st.warning("Verifica distancia (>0), rango de frecuencia válido y número de puntos (>2).")
+            return
 
-    if fstart_MHz <= 0 or fend_MHz <= 0 or fend_MHz <= fstart_MHz or npts <= 2 or dist_m <= 0:
-        st.warning("Verifica distancia (>0), rango de frecuencia válido y número de puntos (>2).")
-        return
+        # Frecuencia en MHz para el eje x (lo que verá el estudiante)
+        freqs_MHz = np.logspace(math.log10(fstart_MHz), math.log10(fend_MHz), int(npts))
+        # Convertimos a Hz para los modelos de atenuación (cálculo interno)
+        freqs_Hz = freqs_MHz * 1e6
 
-    freqs_MHz = np.logspace(math.log10(fstart_MHz), math.log10(fend_MHz), int(npts))
-    freqs_Hz = freqs_MHz * 1e6
+        yA = channel_attenuation_curve(chanA, freqs_Hz, distance_m=dist_m)
+        yB = channel_attenuation_curve(chanB, freqs_Hz, distance_m=dist_m)
 
-    yA = channel_attenuation_curve(chanA, freqs_Hz, distance_m=dist_m)
-    yB = channel_attenuation_curve(chanB, freqs_Hz, distance_m=dist_m)
+        with col2:
+            fig, ax = plt.subplots(figsize=(7, 5))
+            ax.semilogx(freqs_MHz, yA, label=chanA)
+            ax.semilogx(freqs_MHz, yB, label=chanB)
+            ax.set_xlabel("Frecuencia (MHz)")
+            ax.set_ylabel(f"Atenuación (dB) (distancia = {dist_m} m)")
+            ax.set_title("Comparación de canales")
+            ax.legend()
+            ax.grid(True, which="both", linestyle=":", alpha=0.5)
+            st.pyplot(fig)
 
-    with col2:
-        fig, ax = plt.subplots(figsize=(7, 5))
-        ax.semilogx(freqs_MHz, yA, label=chanA)
-        ax.semilogx(freqs_MHz, yB, label=chanB)
-        ax.set_xlabel("Frecuencia (MHz)")
-        ax.set_ylabel(f"Atenuación (dB) (distancia = {dist_m} m)")
-        ax.set_title("Comparación de canales")
-        ax.legend()
-        ax.grid(True, which="both", linestyle=":", alpha=0.5)
-        st.pyplot(fig)
+            descA = describe_channel(chanA)
+            descB = describe_channel(chanB)
 
-        descA = describe_channel(chanA)
-        descB = describe_channel(chanB)
-        with st.expander("Explicación", expanded=True):
-            st.markdown(f"- **{chanA}**: {descA}\n- **{chanB}**: {descB}")
-
+            with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
+                st.markdown(
+                    f"Para la distancia seleccionada ({dist_m:.0f} m), la curva de {chanA} y la de {chanB} muestran cómo la "
+                    "atenuación crece con la frecuencia. En canales guiados, las pérdidas dependen del material y de los "
+                    "mecanismos de disipación; en espacio libre, la pérdida de trayectoria se incrementa con la distancia y "
+                    "la frecuencia de operación.\n\n"
+                    f"- **{chanA}**: {descA}\n"
+                    f"- **{chanB}**: {descB}\n"
+                )
+                st.markdown(
+                    "**Preguntas y respuestas:**\n\n"
+                    "1. **¿Cuál de los canales presenta menor atenuación para la misma distancia en la mayor parte del rango de frecuencias?**  \n"
+                    "   **R:** Depende de la selección, pero típicamente la fibra óptica presenta menor atenuación que los medios metálicos para enlaces de larga distancia.\n\n"
+                    "2. **¿Cómo afecta duplicar la distancia en un enlace de espacio libre a la potencia recibida?**  \n"
+                    "   **R:** Idealmente, la potencia recibida se reduce en aproximadamente 6 dB (modelo de propagación 1/d²).\n\n"
+                    "3. **¿Por qué es importante conocer la atenuación en función de la frecuencia al diseñar un sistema?**  \n"
+                    "   **R:** Porque determina qué bandas de frecuencia son viables, cuánta potencia de transmisión se requiere y qué márgenes de diseño deben considerarse.\n\n"
+                    "4. **¿Qué ventaja ofrecen las fibras ópticas frente a cables coaxiales o par trenzado en enlaces de larga distancia?**  \n"
+                    "   **R:** Las fibras ópticas ofrecen menor atenuación, mayor ancho de banda y menor sensibilidad al ruido electromagnético externo."
+                )
 
 # =========================
 # DINÁMICAS INTEGRADAS (GUÍA 1)
