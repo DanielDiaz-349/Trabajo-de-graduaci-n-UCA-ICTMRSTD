@@ -15,6 +15,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 from pathlib import Path
+from github_uploader import upload_file_to_github_results
+
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_UCA_PATH = str(BASE_DIR / "assets" / "logo_uca.png")
@@ -24,51 +26,7 @@ TEMA_TG = (
     "en sistemas de telecomunicaciones digitales"
 )
 
-def upload_file_to_github(local_path, path_in_repo):
-    """
-    Sube un archivo local a un repositorio de GitHub usando la API.
-    path_in_repo es la ruta destino, por ejemplo: 'guia2/archivo.pdf'
-    """
-    token = os.getenv("GITHUB_TOKEN")
-    user = os.getenv("GITHUB_USER")
-    repo = os.getenv("GITHUB_REPO")
 
-    if not token or not user or not repo:
-        print("Faltan variables de entorno GITHUB_TOKEN, GITHUB_USER o GITHUB_REPO.")
-        return False
-
-    if not os.path.exists(local_path):
-        print("El archivo local no existe:", local_path)
-        return False
-
-    with open(local_path, "rb") as f:
-        content = f.read()
-    b64_content = base64.b64encode(content).decode("utf-8")
-
-    url = f"https://api.github.com/repos/{user}/{repo}/contents/{path_in_repo}"
-    headers = {"Authorization": f"token {token}"}
-    data = {
-        "message": f"Subiendo {os.path.basename(local_path)} desde Streamlit",
-        "content": b64_content
-    }
-
-    r = requests.put(url, headers=headers, json=data)
-    if r.status_code in (200, 201):
-        print("Subida correcta:", path_in_repo)
-        return True
-    else:
-        print("Error al subir a GitHub:", r.status_code, r.text)
-        return False
-# --- Opcional: generación de PDF (igual que en Guía 1) ---
-try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas as rcanvas
-    REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
-
-RESULTS_DIR = "resultados_dinamicas"
-os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 def export_results_pdf_txt(filename_base, student_info, dyn_id, key, answers, score):
@@ -1795,26 +1753,32 @@ def render_dinamicas_guia2():
 
         nombre_pdf_repo = os.path.basename(pdf_path)
         ruta_repo = f"guia2/{nombre_pdf_repo}"
-        ok = upload_file_to_github(pdf_path, ruta_repo)
+        ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
 
-        if ok:
-            st.success("PDF generado y enviado correctamente a GitHub.")
-            st.write("Ruta local del PDF:", pdf_path)
-            st.write("Ruta en el repositorio:", ruta_repo)
-        else:
-            st.error("El PDF se generó, pero hubo un problema al enviarlo a GitHub.")
-            st.write("Ruta local del PDF:", pdf_path)
+
+       if ok:
+    st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
+    if isinstance(info, str) and info.startswith("http"):
+        st.link_button("Ver archivo en GitHub", info)
+    st.write("Ruta local del PDF:", pdf_path)
+    st.write("Ruta en el repositorio:", ruta_repo)
+else:
+    st.error(f"El PDF se generó, pero hubo un problema al enviarlo a GitHub: {info}")
+    st.write("Ruta local del PDF:", pdf_path)
+    st.write("Ruta en el repositorio:", ruta_repo)
+
 
         # Descarga local (útil en ejecución local)
         try:
             with open(pdf_path, "rb") as f:
-                st.download_button(
-                    "Descargar PDF",
-                    data=f,
-                    file_name=nombre_pdf_repo,
-                    mime="application/pdf",
-                    key="g2_download_pdf",
-                )
+    st.download_button(
+        "Descargar PDF",
+        data=f.read(),
+        file_name=nombre_pdf_repo,
+        mime="application/pdf",
+        key="g2_download_pdf",
+    )
+
         except Exception:
             pass
 
@@ -1861,15 +1825,20 @@ def render_resumen_dinamicas_guia2():
         nombre_pdf_repo = os.path.basename(pdf_path)
         ruta_repo = f"guia2/{nombre_pdf_repo}"
 
-        ok = upload_file_to_github(pdf_path, ruta_repo)
+        ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
 
-        if ok:
-            st.success("PDF generado y enviado correctamente a GitHub.")
-            st.write("Ruta local del PDF:", pdf_path)
-            st.write("Ruta en el repositorio:", ruta_repo)
-        else:
-            st.error("El PDF se generó, pero hubo un problema al enviarlo a GitHub. Revisa la consola del servidor.")
-            st.write("Ruta local del PDF:", pdf_path)
+
+       if ok:
+    st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
+    if isinstance(info, str) and info.startswith("http"):
+        st.link_button("Ver archivo en GitHub", info)
+    st.write("Ruta local del PDF:", pdf_path)
+    st.write("Ruta en el repositorio:", ruta_repo)
+else:
+    st.error(f"El PDF se generó, pero hubo un problema al enviarlo a GitHub: {info}")
+    st.write("Ruta local del PDF:", pdf_path)
+    st.write("Ruta en el repositorio:", ruta_repo)
+)
 
 
 # =========================================================
