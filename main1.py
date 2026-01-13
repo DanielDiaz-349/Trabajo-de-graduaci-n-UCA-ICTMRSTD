@@ -113,7 +113,7 @@ Analizar diferentes fuentes de ruido y los efectos que producen sobre señales e
 - Proporcionar al estudiante herramientas de aprendizaje y retroalimentación
 """
 
-NTRO_FULL_TEXT = r"""
+INTRO_FULL_TEXT = r"""
 
 En todo sistema de telecomunicaciones existe un elemento inevitable: la incertidumbre. Dicha incertidumbre proviene tanto de la naturaleza aleatoria de la información como de la presencia permanente de perturbaciones indeseadas agregadas a una señal, denominadas ruido. Por ello, el análisis y diseño de sistemas modernos de comunicación exige un enfoque basado en probabilidad y procesos aleatorios. A partir de la década de 1940, se adoptaron formalmente métodos probabilísticos para optimizar el desempeño de sistemas de comunicación.
 
