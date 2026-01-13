@@ -1638,7 +1638,7 @@ def render_dinamicas_guia1():
                 
                 if isinstance(info, dict) and info.get("html_url"):
                     st.link_button("Ver archivo en GitHub", info["html_url"])
-                st.write("Verifica tu nota con el catedratico o el instructor encargado", repo_path)
+                st.write("Verifica tu nota con el catedratico o el instructor encargado")
             else:
                 st.error(f"No se pudo subir el PDF: {info}")
 
