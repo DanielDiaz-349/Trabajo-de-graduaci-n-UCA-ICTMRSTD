@@ -2007,4 +2007,5 @@ def render_guia2():
         render_dinamicas_guia2()
 
     with tabs[5]:
+        
         st.markdown(CONCLUSIONES2_TEXT)
