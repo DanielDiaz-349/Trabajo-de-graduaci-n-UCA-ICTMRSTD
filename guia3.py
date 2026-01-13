@@ -174,14 +174,7 @@ def export_results_pdf_guia3_bytes(student_info, resultados):
 MATERIALES_COMUNES = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
-- Python instalado (versión 3.8 o superior recomendada).
-- Un entorno de desarrollo como Visual Studio Code o PyCharm.
-- Las siguientes bibliotecas de Python:
-  - `numpy` para el manejo de arreglos y operaciones numéricas.
-  - `matplotlib` para la generación de gráficas.
-  - `streamlit` para la interfaz interactiva de la guía.
-  - `scipy` para operaciones adicionales de análisis numérico y simulación.
+- Dispositivo con acceso a internet
 """
 
 OBJETIVOS3_TEXT = r"""
