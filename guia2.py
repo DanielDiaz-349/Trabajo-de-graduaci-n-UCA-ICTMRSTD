@@ -839,6 +839,13 @@ def render_ejemplo1():
 # Ejemplo 2 – Aliasing y FFT (versión sin "modo de muestreo")
 # =========================================================
 
+def _sample_sinusoid(amplitude, frequency, t_samples, fs, phase=0.0):
+    nyquist_freq = fs / 2.0
+    if np.isclose(abs(frequency), nyquist_freq, rtol=0.0, atol=1e-9):
+        phase += np.pi / 2
+    return amplitude * np.sin(2 * np.pi * frequency * t_samples + phase)
+
+
 def render_ejemplo2():
     st.subheader("Ejemplo 2 - Aliasing y análisis en frecuencia (FFT)")
 
@@ -870,7 +877,7 @@ def render_ejemplo2():
     if st.button("Analizar en frecuencia", key="g2_ej2_btn"):
         # --- Señal discreta con fs elegido por el usuario ---
         t_disc = np.arange(0, T, 1.0 / fs)
-        x_disc = A1 * np.sin(2 * np.pi * f1 * t_disc) + A2 * np.sin(2 * np.pi * f2 * t_disc)
+        x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
 
         # --- FFT discreta y centrada en [-fs/2, fs/2] ---
         N = len(x_disc)
@@ -957,6 +964,11 @@ def render_ejemplo2():
                 )
 
             st.markdown(nyq_msg)
+            st.markdown(
+                "Si una componente cae **exactamente** en $f_s/2$, una senoide con fase 0 se muestrea en todos ceros. "
+                "Para evitar esta degeneración y representar correctamente el espectro en Nyquist, se aplica un "
+                "desfase de $\\pi/2$ a esa componente."
+            )
 
             st.markdown("##### Recordatorio:")
             st.markdown(
