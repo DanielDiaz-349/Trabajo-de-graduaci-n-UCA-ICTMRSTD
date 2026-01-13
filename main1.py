@@ -29,7 +29,7 @@ import guia3
 import guia4
 import guia5
 
-from github_uploader import upload_file_to_github_results
+from github_uploader import upload_file_to_github_results, upload_text_to_github_results
 
 
 # =========================
@@ -63,19 +63,10 @@ try:
 except Exception:
     SCIPY_AVAILABLE = False
 
-try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas as rcanvas
-    REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
 
 
 # =========================
 # RESULTS DIR
-# =========================
-RESULTS_DIR = "resultados_dinamicas"
-os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 # =========================
@@ -110,7 +101,6 @@ Analizar diferentes fuentes de ruido y los efectos que producen sobre señales e
 """
 
 INTRO_FULL_TEXT = r"""
-
 En todo sistema de telecomunicaciones existe un elemento inevitable: la incertidumbre. Dicha incertidumbre proviene tanto de la naturaleza aleatoria de la información como de la presencia permanente de perturbaciones indeseadas agregadas a una señal, denominadas ruido. Por ello, el análisis y diseño de sistemas modernos de comunicación exige un enfoque basado en probabilidad y procesos aleatorios. A partir de la década de 1940, se adoptaron formalmente métodos probabilísticos para optimizar el desempeño de sistemas de comunicación.
 
 **Modelo general de un sistema de comunicación**
@@ -118,144 +108,38 @@ En todo sistema de telecomunicaciones existe un elemento inevitable: la incertid
 Un sistema de comunicación típico está compuesto por transmisor, canal y receptor, junto con los transductores de entrada y salida. El transductor convierte magnitudes físicas en señales eléctricas, el transmisor modula y adapta la señal al canal, el canal transporta la señal con pérdidas e interferencias, y el receptor intenta recuperar la información original compensando distorsiones generadas a lo largo del trayecto.
 
 La calidad con la que la señal llega al receptor depende de dos factores principales:
-
 - Las características del canal.
 - Las perturbaciones añadidas a la señal, entre ellas el ruido y la distorsión por no linealidad.
 
-**Canales de transmisión**
-
-Existen muchos tipos de canales de transmisión, entre los más comunes se encuentran: canales de propagación de ondas electromagnéticas, canales de propagación de ondas electromagnéticas guiados y enlaces ópticos. 
-
-Canales de propagación de ondas electromagnéticas
-
-El principio básico involucrado es el acoplamiento de la energía electromagnética con un medio de propagación, el cual puede ser el espacio libre o la atmósfera, mediante un elemento de radiación conocido como antena. 
-
-Canales guiados y enlaces opticos
-
-Incluyen par trenzado, cables coaxiales, guías de onda metálicas y fibras ópticas. En estos medios la señal permanece confinada físicamente y la propagación depende de parámetros eléctricos del material como permitividad y permeabilidad. Estos canales se emplean donde se requiere alta capacidad, baja atenuación o inmunidad al ruido externo.
-
 **Naturaleza y clasificación del ruido**
+El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado o no correlacionado.
 
-El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado (producto de la no linealidad y dependiente de la señal) o no correlacionado (presente incluso sin señal).
-
-Ruido no correlacionado
-
-Incluye las fuentes externas (atmosféricas, extraterrestres e industriales) y las internas generadas por dispositivos electrónicos (ruido de disparo, de tiempo de tránsito y ruido térmico, este ultimo es considerado el más importante por su carácter aditivo y su presencia en todas las frecuencias).
-
-Ruido correlacionado
-
-Resulta de la no linealidad de los dispositivos e incluye:
-
-- Distorsión armónica, donde aparecen armónicas de la señal fundamental.
-- Intermodulación, donde múltiples señales interactúan dentro de un dispositivo no lineal generando nuevas frecuencias.
-
-La intermodulación es especialmente crítica en sistemas multicanal, pues produce términos que pueden caer dentro del ancho de banda útil e interferir directamente con la señal deseada.
-
-**Distorsión por intermodulación**
-
-La distorsión por intermodulación ocurre cuando dos o más señales de diferentes frecuencias atraviesan un dispositivo no lineal, como un amplificador o mezclador, produciendo componentes de frecuencia adicionales que son sumas y diferencias de las frecuencias originales y sus múltiplos armónicos. Estas nuevas frecuencias llamadas productos de intermodulación no estaban presentes en la entrada y pueden caer dentro del ancho de banda útil, interfiriendo con la señal original o con canales adyacentes.
-
-Se introduce el termino coeficiente cubico o k3 que es un parámetro que aparece en el modelo polinómico utilizado para describir la no linealidad de un amplificador o cualquier dispositivo activo. Es fundamental para entender la intermodulación de tercer orden (IM3), que es la forma más problemática de distorsión en sistemas de RF y comunicaciones.
-
-Cuando dos señales de entrada de frecuencias f1 y f2 pasan por un dispositivo no lineal, aparecen nuevas frecuencias dadas por la **ecuación (1)**
-
-$$
-f_{IM} = m f_1 \pm n f_2 \tag{1}
-$$
-
-
-
-Donde:
-
-m y n son enteros positivos
-la suma o resta da lugar a distintas combinaciones
-los terminos m+n=k se llaman productos de intermodulación de orden k
-
-Los productos de tecer orden son los más problematicos porque sus frecuencias son muy cercanas a las señales originales, lo que los hace difíciles de eliminar con filtros. 
-
-Por ejemplo, un amplificador es un dispositivo no lineal de tercer orden, los productos de intermodulación son: 
-
- 2f1-f2, 2f2-f1, 3f1, 3f2, 2f1+f2}, 2f2+f1.
-
-
-**Adición de ruido a una señal**
-
-En un sistema real, el canal no solo atenúa y distorsiona la señal sino que introduce ruido. La señal recibida puede representarse en la **ecuación (2)**:
-
-$$
-r(t) = s(t) + n(t) \tag{2}
-$$
-
-
-
-donde:
-
-- s(t) es la señal transmitida posiblemente distorsionada
-- n(t) corresponde al ruido agregado por fuentes internas y externas.
-
-**Ruido blanco aditivo gaussiano**
-
-Para análisis y diseño, una de las aproximaciones más utilizadas es el modelo AWGN (Additive White Gaussian Noise), que representa un tipo de ruido:
-
-- Aditivo: se suma linealmente a la señal.
-- Blanco: tiene potencia constante en todas las frecuencias.
-- Gaussiano: su amplitud sigue una distribución normal.
-
-El AWGN modela adecuadamente:
-
-- Ruido térmico en componentes electrónicos.
-- Ruido de fondo en canales de radio.
-- El comportamiento agregado de muchas fuentes pequeñas e independientes.
-
-Aunque simplificado, este modelo es ampliamente aceptado en el diseño teórico de moduladores y detectores digitales y analógicos por su precisión estadística y su facilidad matemática.
+**Ruido blanco aditivo gaussiano (AWGN)**
+Es un modelo ampliamente utilizado: aditivo, blanco y gaussiano.
 
 **Relación Señal-Ruido (SNR)**
+\[
+\mathrm{SNR}=\frac{P_s}{P_n}, \quad
+\mathrm{SNR}_{\mathrm{dB}}=10\log_{10}\left(\frac{P_s}{P_n}\right)
+\]
 
-El desempeño de un sistema en presencia de ruido suele medirse con la relación señal-ruido (SNR) definido en la **ecuación (3)**:
-
-$$
-\mathrm{SNR} = \frac{P_s}{P_n} \tag{3}
-$$
-
-
-donde Ps es la potencia de la señal útil y Pn es la potencia del ruido.
-Se expresa en decibelos en la **ecuación (4)**: 
-
-$$
-\mathrm{SNR}_{\mathrm{dB}} = 10\log_{10}\!\left(\frac{P_s}{P_n}\right) \tag{4}
-$$
-
-Un SNR alto implica que el receptor puede distinguir adecuadamente la señal del ruido, reduciendo errores en detección. Por el contrario, un SNR bajo aumenta la probabilidad de error y limita el ancho de banda útil del canal.
-
-El SNR está directamente relacionado con:
-
-- La distancia de transmisión.
-- El tipo de canal.
-- La potencia transmitida.
-- Las propiedades del ruido generado en el sistema.
-
-**Tasa de error de bit (BER)**
-
-Es la razón entre el número de bits erróneos y el número total de bits recibidos o visto de otra forma, la probabilidad de que un bit recibido sea incorrecto
-
-
-BER= número de bits erróneos / total de bits recibidos 
-
-
-**La calidad de la comunicación depende del equilibrio entre:**
-
-- El canal.
-- Las fuentes de ruido.
-- Las métricas de desempeño.
-- La capacidad del receptor para filtrar y detectar señales distorsionadas.
-
+**BER**
+Es la razón entre bits erróneos y bits totales recibidos.
 """
 
-MATERIALES_TEXT= """
+MATERIALES_TEXT = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- Dispositivo con acceso a internet.
+- Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
+- Python instalado (versión 3.8 o superior recomendada).
+- Un entorno de desarrollo como Visual Studio Code o PyCharm.
+- Bibliotecas:
+  - numpy
+  - matplotlib
+  - streamlit
+  - scipy (opcional)
 """
+
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
 
 - A través de los ejemplos prácticos incluidos, el estudiante pudo visualizar de forma gráfica y cuantitativa tanto el impacto del ruido aditivo como la generación de productos de intermodulación en sistemas multiseñal. La comparación entre distintos canales guiados e inalámbricos evidenció que cada medio introduce degradaciones particulares, por lo que el diseño de sistemas modernos exige considerar modelos precisos de ruido, características físicas del canal y técnicas de mitigación orientadas a preservar la integridad de la información transmitida.
@@ -574,127 +458,6 @@ def generate_dyn2_key():
 
 # =========================
 # EXPORT PDF (GUÍA 1)
-# =========================
-def export_results_pdf_guia1(filename_base, student_info, resultados):
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    base = f"{filename_base}_{ts}"
-    pdf_path = os.path.join(RESULTS_DIR, base + ".pdf")
-
-    if not REPORTLAB_AVAILABLE:
-        return pdf_path
-
-    c = rcanvas.Canvas(pdf_path, pagesize=letter)
-    width, height = letter
-    left = 40
-    top = height - 40
-    line_h = 14
-
-    # Marca de agua
-    if os.path.exists(LOGO_UCA_PATH):
-        from reportlab.lib.utils import ImageReader
-        logo = ImageReader(LOGO_UCA_PATH)
-        iw, ih = logo.getSize()
-        aspect = ih / float(iw)
-        logo_width = width * 0.6
-        logo_height = logo_width * aspect
-        x = (width - logo_width) / 2.0
-        y = (height - logo_height) / 2.0
-
-        c.saveState()
-        try:
-            c.setFillAlpha(0.2)
-        except Exception:
-            pass
-        c.drawImage(logo, x, y, width=logo_width, height=logo_height, mask="auto")
-        c.restoreState()
-
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(left, top, "Resultados Guía 1 – Dinámicas")
-    c.setFont("Helvetica", 10)
-    y = top - 2 * line_h
-    c.drawString(left, y, f"Fecha: {datetime.datetime.now().isoformat()}")
-
-    y -= 1.5 * line_h
-    c.drawString(left, y, "Alumno:")
-    y -= line_h
-    c.drawString(left + 10, y, f"Nombre completo: {student_info.get('name')}")
-    y -= line_h
-    c.drawString(left + 10, y, f"Carné: {student_info.get('id')}")
-    y -= line_h
-    c.drawString(left + 10, y, f"Fecha de nacimiento: {student_info.get('dob')}")
-
-    total_score = 0.0
-    for res in resultados:
-        dyn_id = res["dyn_id"]
-        score = res["score"]
-        answers = res["answers"]
-        correct = res["correct"]
-        key = res["key"]
-        total_score += score
-
-        y -= 2 * line_h
-        if y < 120:
-            c.showPage()
-            y = top
-
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(left, y, f"Dinámica {dyn_id}")
-        y -= line_h
-
-        c.setFont("Helvetica", 10)
-        c.drawString(left, y, f"Nota dinámica (oculta): {score}")
-        y -= 1.5 * line_h
-
-        c.setFont("Helvetica", 9)
-        c.drawString(left, y, "Parámetros / clave:")
-        y -= line_h
-        for k, v in key.items():
-            if y < 80:
-                c.showPage()
-                y = top
-                c.setFont("Helvetica", 9)
-            c.drawString(left + 10, y, f"{k}: {v}")
-            y -= line_h
-
-        y -= line_h
-        c.drawString(left, y, "Respuestas correctas:")
-        y -= line_h
-        for q, v in correct.items():
-            if y < 80:
-                c.showPage()
-                y = top
-                c.setFont("Helvetica", 9)
-            c.drawString(left + 10, y, f"{q}: {v}")
-            y -= line_h
-
-        y -= line_h
-        c.drawString(left, y, "Respuestas del alumno:")
-        y -= line_h
-        for q, v in answers.items():
-            if y < 80:
-                c.showPage()
-                y = top
-                c.setFont("Helvetica", 9)
-            c.drawString(left + 10, y, f"{q}: {v}")
-            y -= line_h
-
-    promedio = total_score / max(len(resultados), 1)
-    y -= 2 * line_h
-    if y < 80:
-        c.showPage()
-        y = top
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(left, y, f"Nota global de la guía (oculta): {promedio:.2f}")
-
-    c.setFont("Helvetica-Oblique", 9)
-    c.drawCentredString(width / 2.0, 30, TEMA_TG)
-
-    c.save()
-    return pdf_path
-
-
-# =========================
-# EJEMPLOS (1–3)
 # =========================
 def render_ejemplo1():
     """
@@ -1503,77 +1266,82 @@ def render_dinamicas_guia1():
     st.markdown("---")
 
     # -------- ENVÍO FINAL --------
-    disabled = not (state["dyn1"]["completed"] and state["dyn2"]["completed"])
-    if st.button("Enviar respuestas (generar PDF)", key="g1_send_pdf", disabled=disabled):
-        if not REPORTLAB_AVAILABLE:
-            st.error("No se puede generar el PDF porque ReportLab no está instalado.")
-            st.stop()
+    disabled = (not (state["dyn1"]["completed"] and state["dyn2"]["completed"])) or state.get("submitted", False)
+    if state.get("submitted", False):
+        st.info("Ya enviaste estas respuestas ✅")
+
+    if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled):
+        import datetime
+        import json
+        import re
+
+        dyn1_key = state["dyn1"]["key"]
+        dyn2_key = state["dyn2"]["key"]
 
         ans1 = state["dyn1"]["answers"]
         ans2 = state["dyn2"]["answers"]
-        score1, corr1 = _score_dyn1(state["dyn1"]["key"], ans1)
-        score2, corr2 = _score_dyn2(state["dyn2"]["key"], ans2)
 
-        res1 = {
-            "dyn_id": 1,
-            "score": score1,
-            "answers": ans1,
-            "correct": corr1,
-            "key": {
-                "descripcion": "Guía 1 - Dinámica 1 - Ruido AWGN y BER",
-                "snr_dB": state["dyn1"]["key"]["snr"],
-                "delay_Tb": state["dyn1"]["key"]["delay"],
-            },
+        correct1 = {"q1": dyn1_key["q1"], "q2": dyn1_key["q2"], "q3": dyn1_key["q3"], "q4": dyn1_key["q4"]}
+        correct2 = {"q1": dyn2_key["q1"], "q2": dyn2_key["q2"], "q3": dyn2_key["q3"]}
+
+        def _count_correct(ans, corr):
+            return sum(1 for k, v in corr.items() if ans.get(k) == v)
+
+        c1 = _count_correct(ans1, correct1)
+        c2 = _count_correct(ans2, correct2)
+
+        score1 = {4: 10, 3: 8, 2: 6, 1: 4}.get(c1, 0)
+        score2 = {3: 10, 2: 8, 1: 6}.get(c2, 0)
+
+        payload = {
+            "guide": 1,
+            "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
+            "student": state["student"],
+            "results": [
+                {
+                    "dynamic": 1,
+                    "score": score1,
+                    "correct_count": c1,
+                    "answers": ans1,
+                    "answer_key": correct1,
+                    "case": {"snr_dB": dyn1_key["snr"], "delay_T": dyn1_key["delay"]},
+                    "meta": state["dyn1"].get("meta", {}),
+                },
+                {
+                    "dynamic": 2,
+                    "score": score2,
+                    "correct_count": c2,
+                    "answers": ans2,
+                    "answer_key": correct2,
+                    "case": {"filter": dyn2_key.get("filter_name"), "tb": dyn2_key.get("tb")},
+                    "meta": state["dyn2"].get("meta", {}),
+                },
+            ],
+            "overall": {"score_sum": score1 + score2, "score_avg": (score1 + score2) / 2},
         }
-        res2 = {
-            "dyn_id": 2,
-            "score": score2,
-            "answers": ans2,
-            "correct": corr2,
-            "key": {
-                "descripcion": "Guía 1 - Dinámica 2 - Intermodulación IM3",
-                "f1_Hz": state["dyn2"]["key"]["f1"],
-                "f2_Hz": state["dyn2"]["key"]["f2"],
-                "A1": state["dyn2"]["key"]["A1"],
-                "A2": state["dyn2"]["key"]["A2"],
-                "k3": state["dyn2"]["key"]["k3"],
-            },
-        }
 
-        resultados = [res1, res2]
+        content = json.dumps(payload, ensure_ascii=False, indent=2)
 
-        pdf_path = export_results_pdf_guia1(
-            filename_base=f"guia1_{state['student'].get('id', 'sin_id')}",
-            student_info=state["student"],
-            resultados=resultados,
-        )
+        sid = (state["student"].get("id") or "sin_id").strip()
+        sid_clean = re.sub(r"[^A-Za-z0-9_-]+", "_", sid).strip("_") or "sin_id"
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        repo_path = f"resultados/guia1/{sid_clean}/guia1_{sid_clean}_{ts}.json"
+        commit_msg = f"Guía 1 resultados {sid_clean} {ts}"
 
-        if not pdf_path or not os.path.exists(pdf_path):
-            st.error(f"No se pudo generar el PDF en disco. Ruta esperada:\n{pdf_path}")
-            st.stop()
-
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                "Descargar PDF",
-                data=f.read(),
-                file_name=os.path.basename(pdf_path),
-                mime="application/pdf",
-                key="g1_download_pdf",
-            )
-
-        nombre_pdf_repo = os.path.basename(pdf_path)
-        ruta_repo = f"guia1/{nombre_pdf_repo}"
-        ok, info = upload_file_to_github_results(pdf_path, ruta_repo)
+        ok, info = upload_text_to_github_results(content, repo_path, commit_message=commit_msg)
 
         if ok:
-            st.success("PDF generado y enviado correctamente al repositorio de RESULTADOS.")
-            if isinstance(info, str) and info.startswith("http"):
-                st.link_button("Ver archivo en GitHub", info)
-            st.write("Ruta en el repositorio:", ruta_repo)
+            state["submitted"] = True
+            st.success("Respuestas enviadas y guardadas en GitHub ✅")
+            if info.get("html_url"):
+                st.link_button("Ver archivo en GitHub", info["html_url"])
+            st.caption(f"Ruta en repo: `{repo_path}`")
         else:
-            st.error(f"El PDF se generó, pero falló el envío a GitHub: {info}")
-
-
+            st.error("No se pudo subir a GitHub.")
+            st.code(info.get("error", "Error desconocido"))
+            st.info(
+                "Revisa Secrets (token/owner/repo/branch) y que el token tenga permisos de escritura (Contents)."
+            )
 # =========================
 # GUÍA 1 (TABS)
 # =========================
