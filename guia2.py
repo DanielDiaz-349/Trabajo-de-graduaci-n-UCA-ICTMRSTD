@@ -1165,7 +1165,7 @@ def render_dinamica1():
     )
 
     f_sig = 500.0
-    fs_bueno = 4000.0
+    fs_bueno = 8000.0
     fs_malo = 600.0
 
     T = 0.02
@@ -1578,7 +1578,7 @@ def render_dinamica1_integrada():
     # Señal de referencia
     f_sig = 3000.0
     T = 0.005  # ventana corta para ver bien muestras
-    fs_bueno = 4000.0
+    fs_bueno = 8000.0
     fs_malo = 600.0
 
     t_cont = np.arange(0, T, 1.0 / 200000)  # "continuo" para referencia visual
@@ -1808,11 +1808,114 @@ def render_dinamicas_guia2():
     with st.expander("Dinámica 3 — Interpretación de respuesta en frecuencia", expanded=True):
         render_dinamica3_integrada()
 
-    st.markdown("---")
+        st.markdown("---")
+
+    # -------- EVALUACIÓN Y ENVÍO FINAL --------
+    # Respuestas seleccionadas (se guardan automáticamente por los keys de Streamlit)
+    d1_ans = {
+        "q1": st.session_state.get("g2_d1_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_d1_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_d1_q3", "Seleccione una opción"),
+    }
+    d2_ans = {
+        "q1": st.session_state.get("g2_d2_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_d2_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_d2_q3", "Seleccione una opción"),
+    }
+    d3_ans = {
+        "q1": st.session_state.get("g2_d3_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_d3_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_d3_q3", "Seleccione una opción"),
+    }
+
+    def _done(ans_dict: dict) -> bool:
+        return all((v is not None) and (str(v).strip() != "") and (v != "Seleccione una opción") for v in ans_dict.values())
+
+    d1_done = _done(d1_ans)
+    d2_done = _done(d2_ans)
+    d3_done = _done(d3_ans)
+
+    # Claves (respuestas correctas) — ajustadas a las preguntas de cada dinámica
+    d1_corr = {
+        "q1": "Caso A",
+        "q2": "Falso",
+        "q3": "fₛ = 8 kHz",
+    }
+    d2_corr = {
+        "q1": "Se vuelve más suave (promediada)",
+        "q2": "Porque promedia muestras (filtro pasa bajas)",
+        "q3": "y[n] = (1/M) · Σ x[n-k]",
+    }
+    d3_corr = {
+        "q1": "Las componentes de alta frecuencia",
+        "q2": "Uno donde se conservan las bajas y se atenúan las altas",
+        "q3": "Un filtro pasa bajas",
+    }
+
+    def _count_correct(ans: dict, corr: dict) -> int:
+        return sum(1 for k, v in corr.items() if ans.get(k) == v)
+
+    c1 = _count_correct(d1_ans, d1_corr)
+    c2 = _count_correct(d2_ans, d2_corr)
+    c3 = _count_correct(d3_ans, d3_corr)
+
+    # Notas por dinámica (escala 0–10)
+    score_map_3 = {3: 10.0, 2: 8.0, 1: 6.0, 0: 0.0}
+    score1 = score_map_3.get(c1, 0.0)
+    score2 = score_map_3.get(c2, 0.0)
+    score3 = score_map_3.get(c3, 0.0)
+
+    nota_global = round((score1 + score2 + score3) / 3.0, 2)
+
+    # Resumen para PDF
+    # (Los parámetros de Dinámica 1 se fijan acá para que queden documentados)
+    f_sig_hz = 3000
+    fs_caso_a_hz = 8000
+    fs_caso_b_hz = 600
+
+    res1 = {
+        "titulo": "Dinámica 1 — Muestreo y aliasing",
+        "correctas": c1,
+        "total": 3,
+        "nota": score1,
+        "key": {"f (Hz)": f_sig_hz, "fs Caso A (Hz)": fs_caso_a_hz, "fs Caso B (Hz)": fs_caso_b_hz},
+        "answers": {
+            "1) ¿Cuál caso evita el aliasing?": d1_ans["q1"],
+            "2) 'Aumentar la duración T corrige el aliasing'": d1_ans["q2"],
+            "3) Para evitar aliasing, elegir:": d1_ans["q3"],
+        },
+    }
+
+    res2 = {
+        "titulo": "Dinámica 2 — Sistema LTI y convolución (promedio móvil)",
+        "correctas": c2,
+        "total": 3,
+        "nota": score2,
+        "key": {"M": 5, "h[n]": "1/M (n=0..M-1)"},
+        "answers": {
+            "1) ¿Cómo se ve y[n] respecto a x[n]?": d2_ans["q1"],
+            "2) ¿Por qué ocurre ese efecto?": d2_ans["q2"],
+            "3) Expresión correcta de y[n]:": d2_ans["q3"],
+        },
+    }
+
+    res3 = {
+        "titulo": "Dinámica 3 — Filtrado en frecuencia",
+        "correctas": c3,
+        "total": 3,
+        "nota": score3,
+        "key": {"Tipo": "Pasa bajas"},
+        "answers": {
+            "1) ¿Qué se atenúa?": d3_ans["q1"],
+            "2) Definición de filtro pasa bajas:": d3_ans["q2"],
+            "3) Ejemplo típico:": d3_ans["q3"],
+        },
+    }
+
+    resultados = [res1, res2, res3]
 
     # -------- ENVÍO FINAL --------
     disabled = (not (d1_done and d2_done and d3_done)) or st.session_state.get("g2_submitted", False)
-
     if st.session_state.get("g2_submitted", False):
         st.info("Ya enviaste estas respuestas ✅")
 
