@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import os
 import math
-import json
+import io
+import importlib.util
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -21,6 +23,18 @@ import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from github_uploader import upload_bytes_to_github_results
+
+BASE_DIR = Path(__file__).resolve().parent
+LOGO_UCA_PATH = str(BASE_DIR / "assets" / "logo_uca.png")
+TEMA_TG = "Fundamentos de transmisión de datos digitales en presencia de ruido"
+
+REPORTLAB_AVAILABLE = importlib.util.find_spec("reportlab") is not None
+if REPORTLAB_AVAILABLE:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas as rcanvas
+else:
+    letter = None
+    rcanvas = None
 
 # ----------------------------
 # Texto base (desde GUIA5.docx)
@@ -840,14 +854,124 @@ def _sanitize_filename(value: str, fallback: str) -> str:
     return cleaned or fallback
 
 
-def _build_results_payload(student_info: Dict[str, str], results: Dict[str, Any]) -> bytes:
-    payload = {
-        "guia": 5,
-        "submitted_at": datetime.now().isoformat(timespec="seconds"),
-        "student": student_info,
-        "results": results,
-    }
-    return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+def export_results_pdf_guia5_bytes(
+    student_info: Dict[str, str],
+    resultados: list[Dict[str, Any]],
+    nota_global: float,
+) -> Tuple[bytes, str]:
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nombre = (student_info.get("name") or "sin_nombre").strip().replace(" ", "_")
+    registro = (student_info.get("id") or "sin_id").strip().replace(" ", "_")
+    pdf_filename = f"guia5_{registro}_{nombre}_{ts}.pdf"
+    buffer = io.BytesIO()
+
+    if not REPORTLAB_AVAILABLE:
+        return b"", pdf_filename
+
+    c = rcanvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    left = 40
+    top = height - 40
+    line_h = 14
+
+    if os.path.exists(LOGO_UCA_PATH):
+        from reportlab.lib.utils import ImageReader
+        logo = ImageReader(LOGO_UCA_PATH)
+        iw, ih = logo.getSize()
+        aspect = ih / float(iw)
+        logo_width = width * 0.6
+        logo_height = logo_width * aspect
+        x = (width - logo_width) / 2.0
+        y = (height - logo_height) / 2.0
+
+        c.saveState()
+        try:
+            c.setFillAlpha(0.2)
+        except Exception:
+            pass
+        c.drawImage(logo, x, y, width=logo_width, height=logo_height, mask="auto")
+        c.restoreState()
+
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(left, top, "Resultados Guía 5 – Dinámicas")
+    c.setFont("Helvetica", 10)
+    y = top - 2 * line_h
+    c.drawString(left, y, f"Fecha: {datetime.now().isoformat()}")
+
+    y -= 1.5 * line_h
+    c.drawString(left, y, "Alumno:")
+    y -= line_h
+    c.drawString(left + 10, y, f"Nombre completo: {student_info.get('name')}")
+    y -= line_h
+    c.drawString(left + 10, y, f"Carné: {student_info.get('id')}")
+    y -= line_h
+    c.drawString(left + 10, y, f"Fecha de nacimiento: {student_info.get('dob')}")
+
+    for res in resultados:
+        dyn_id = res["dyn_id"]
+        score = res["score"]
+        answers = res["answers"]
+        correct = res["correct"]
+        key = res["key"]
+
+        y -= 2 * line_h
+        if y < 120:
+            c.showPage()
+            y = top
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(left, y, f"Dinámica {dyn_id}")
+        y -= line_h
+        c.setFont("Helvetica", 10)
+        c.drawString(left, y, f"Nota dinámica (oculta): {score}")
+        y -= 1.5 * line_h
+
+        c.setFont("Helvetica", 9)
+        c.drawString(left, y, "Parámetros / clave:")
+        y -= line_h
+        for k, v in key.items():
+            if y < 80:
+                c.showPage()
+                y = top
+                c.setFont("Helvetica", 9)
+            c.drawString(left + 10, y, f"{k}: {v}")
+            y -= line_h
+
+        y -= line_h
+        c.drawString(left, y, "Respuestas correctas:")
+        y -= line_h
+        for q, v in correct.items():
+            if y < 80:
+                c.showPage()
+                y = top
+                c.setFont("Helvetica", 9)
+            c.drawString(left + 10, y, f"{q}: {v}")
+            y -= line_h
+
+        y -= line_h
+        c.drawString(left, y, "Respuestas del alumno:")
+        y -= line_h
+        for q, v in answers.items():
+            if y < 80:
+                c.showPage()
+                y = top
+                c.setFont("Helvetica", 9)
+            c.drawString(left + 10, y, f"{q}: {v}")
+            y -= line_h
+
+    y -= 2 * line_h
+    if y < 80:
+        c.showPage()
+        y = top
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(left, y, f"Nota global de la guía (oculta): {nota_global:.2f}")
+
+    c.setFont("Helvetica-Oblique", 9)
+    c.drawCentredString(width / 2.0, 30, TEMA_TG)
+
+    c.save()
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes, pdf_filename
 
 
 def _init_dyn_state():
@@ -1099,7 +1223,7 @@ def render_dinamicas_guia5():
         if isinstance(last_upload, dict) and last_upload.get("html_url"):
             st.link_button("Ver archivo en GitHub", last_upload["html_url"])
 
-    if st.button("Enviar respuestas", key="g5_submit", disabled=state.get("uploaded", False)):
+    if st.button("Enviar respuestas y generar PDF", key="g5_submit", disabled=state.get("uploaded", False)):
         all_answers = [ans1, ans2, ans3]
         missing = 0
         for a in all_answers:
@@ -1116,45 +1240,48 @@ def render_dinamicas_guia5():
         state["submitted"] = True
         state["last_result"] = {"scores": {"dyn1": s1, "dyn2": s2, "dyn3": s3}, "nota": nota}
 
-        results_payload = {
-            "scores": {"dyn1": s1, "dyn2": s2, "dyn3": s3},
-            "nota": nota,
-            "answers": {"dyn1": ans1, "dyn2": ans2, "dyn3": ans3},
-            "correct": {"dyn1": cor1, "dyn2": cor2, "dyn3": cor3},
-        }
-        content_bytes = _build_results_payload(student_info, results_payload)
+        resultados_pdf = [
+            {"dyn_id": 1, "score": s1[1], "answers": ans1, "correct": cor1, "key": state["dyn1"]["key"]},
+            {"dyn_id": 2, "score": s2[1], "answers": ans2, "correct": cor2, "key": state["dyn2"]["key"]},
+            {"dyn_id": 3, "score": s3[1], "answers": ans3, "correct": cor3, "key": state["dyn3"]["key"]},
+        ]
+
+        if not REPORTLAB_AVAILABLE:
+            st.error("No se puede generar el PDF porque 'reportlab' no está disponible.")
+            return
+
+        pdf_bytes, pdf_filename = export_results_pdf_guia5_bytes(
+            student_info=student_info,
+            resultados=resultados_pdf,
+            nota_global=nota,
+        )
+        if not pdf_bytes:
+            st.error("No se pudo generar el PDF. Revisa ReportLab o permisos.")
+            return
 
         safe_id = _sanitize_filename(student_info.get("id", ""), "sin_id")
-        safe_name = _sanitize_filename(student_info.get("name", ""), "sin_nombre")
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"guia5_{safe_id}_{safe_name}_{timestamp}.json"
-        repo_path = f"guia5/{filename}"
+        repo_path = f"guia5/{pdf_filename}"
         commit_msg = f"Guía 5 - {safe_id} - {student_info.get('name','')}".strip()
 
         ok, info = upload_bytes_to_github_results(
-            content_bytes=content_bytes,
+            content_bytes=pdf_bytes,
             repo_path=repo_path,
             commit_message=commit_msg,
         )
         if ok:
             state["uploaded"] = True
             state["last_upload"] = info
-            st.success("¡Listo! Respuestas enviadas y archivo subido al repositorio.")
+            st.success("¡Listo! Respuestas enviadas y PDF subido al repositorio.")
             if isinstance(info, dict) and info.get("html_url"):
                 st.link_button("Ver archivo en GitHub", info["html_url"])
             st.write("Ruta en el repositorio:", repo_path)
+            st.info("Consulta tu nota con el catedrático o el instructor responsable.")
         else:
             err_msg = info.get("error") if isinstance(info, dict) else str(info)
-            st.error(f"No se pudo subir el archivo: {err_msg}")
+            st.error(f"No se pudo subir el PDF: {err_msg}")
 
     if state.get("submitted") and state.get("last_result"):
-        res = state["last_result"]
-        st.success(f"**Nota final (Guía 5):** {res['nota']}/10")
-        st.markdown(
-            f"- Dinámica 1: {res['scores']['dyn1'][0]} aciertos → {res['scores']['dyn1'][1]}/10\n"
-            f"- Dinámica 2: {res['scores']['dyn2'][0]} aciertos → {res['scores']['dyn2'][1]}/10\n"
-            f"- Dinámica 3: {res['scores']['dyn3'][0]} aciertos → {res['scores']['dyn3'][1]}/10"
-        )
+        st.info("Consulta tu nota con el catedrático o el instructor responsable.")
 
 
 # ----------------------------
