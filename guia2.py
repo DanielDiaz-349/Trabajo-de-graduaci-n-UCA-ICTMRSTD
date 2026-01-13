@@ -846,6 +846,15 @@ def _sample_sinusoid(amplitude, frequency, t_samples, fs, phase=0.0):
     return amplitude * np.sin(2 * np.pi * frequency * t_samples + phase)
 
 
+def _build_stem_lines(x_values, y_values):
+    x_lines = []
+    y_lines = []
+    for x_val, y_val in zip(x_values, y_values):
+        x_lines.extend([x_val, x_val, None])
+        y_lines.extend([0, y_val, None])
+    return x_lines, y_lines
+
+
 def render_ejemplo2():
     st.subheader("Ejemplo 2 - Aliasing y análisis en frecuencia (FFT)")
 
@@ -909,8 +918,28 @@ def render_ejemplo2():
         fig.update_yaxes(title_text="x[n]", row=1, col=1)
 
         # Espectro centrado en [-fs/2, fs/2] (banda base)
+        base_color = "#1f77b4"
+        base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
         fig.add_trace(
-            go.Scatter(x=freqs_shift, y=X_mag_shift, mode="markers", name="|X(f)|"),
+            go.Scatter(
+                x=base_x_lines,
+                y=base_y_lines,
+                mode="lines",
+                line=dict(color=base_color, width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=2,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=freqs_shift,
+                y=X_mag_shift,
+                mode="markers",
+                name="|X(f)|",
+                marker=dict(color=base_color, size=6),
+            ),
             row=2,
             col=1,
         )
@@ -922,8 +951,28 @@ def render_ejemplo2():
         freqs_rep = np.concatenate([freqs_shift + k * fs for k in range(-k_max, k_max + 1)])
         mags_rep = np.tile(X_mag_shift, 2 * k_max + 1)
 
+        replica_color = "#ff7f0e"
+        rep_x_lines, rep_y_lines = _build_stem_lines(freqs_rep, mags_rep)
         fig.add_trace(
-            go.Scatter(x=freqs_rep, y=mags_rep, mode="markers", name="Réplicas"),
+            go.Scatter(
+                x=rep_x_lines,
+                y=rep_y_lines,
+                mode="lines",
+                line=dict(color=replica_color, width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=3,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=freqs_rep,
+                y=mags_rep,
+                mode="markers",
+                name="Réplicas",
+                marker=dict(color=replica_color, size=6),
+            ),
             row=3,
             col=1,
         )
@@ -1208,9 +1257,83 @@ def render_ejemplo4():
             vertical_spacing=0.12,
             subplot_titles=("Espectro de entrada", "Respuesta en frecuencia del filtro", "Espectro de salida"),
         )
-        fig.add_trace(go.Scatter(x=fpos, y=Xmag, mode="markers", name="|X(f)|"), row=1, col=1)
-        fig.add_trace(go.Scatter(x=fpos, y=Hmag, mode="markers", name="|H(f)|"), row=2, col=1)
-        fig.add_trace(go.Scatter(x=fpos, y=Ymag, mode="markers", name="|Y(f)|"), row=3, col=1)
+        spectrum_colors = {
+            "input": "#1f77b4",
+            "filter": "#ff7f0e",
+            "output": "#2ca02c",
+        }
+        x_lines, y_lines = _build_stem_lines(fpos, Xmag)
+        fig.add_trace(
+            go.Scatter(
+                x=x_lines,
+                y=y_lines,
+                mode="lines",
+                line=dict(color=spectrum_colors["input"], width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=fpos,
+                y=Xmag,
+                mode="markers",
+                name="|X(f)|",
+                marker=dict(color=spectrum_colors["input"], size=6),
+            ),
+            row=1,
+            col=1,
+        )
+        h_lines_x, h_lines_y = _build_stem_lines(fpos, Hmag)
+        fig.add_trace(
+            go.Scatter(
+                x=h_lines_x,
+                y=h_lines_y,
+                mode="lines",
+                line=dict(color=spectrum_colors["filter"], width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=2,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=fpos,
+                y=Hmag,
+                mode="markers",
+                name="|H(f)|",
+                marker=dict(color=spectrum_colors["filter"], size=6),
+            ),
+            row=2,
+            col=1,
+        )
+        y_lines_x, y_lines_y = _build_stem_lines(fpos, Ymag)
+        fig.add_trace(
+            go.Scatter(
+                x=y_lines_x,
+                y=y_lines_y,
+                mode="lines",
+                line=dict(color=spectrum_colors["output"], width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=3,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=fpos,
+                y=Ymag,
+                mode="markers",
+                name="|Y(f)|",
+                marker=dict(color=spectrum_colors["output"], size=6),
+            ),
+            row=3,
+            col=1,
+        )
 
         fig.update_xaxes(title_text="Frecuencia (Hz)", row=1, col=1)
         fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1)
