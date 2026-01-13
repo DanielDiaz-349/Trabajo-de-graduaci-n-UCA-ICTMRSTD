@@ -258,7 +258,7 @@ BER= número de bits erróneos / total de bits recibidos
 MATERIALES_TEXT = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- UDispositivo con acceso a internet
+- Dispositivo con acceso a internet
 """
 
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
