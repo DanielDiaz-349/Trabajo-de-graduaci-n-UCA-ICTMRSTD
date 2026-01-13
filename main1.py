@@ -1580,17 +1580,14 @@ def render_dinamicas_guia1():
         fig.update_yaxes(title_text="Amplitud", row=2, col=1)
         fig.update_yaxes(title_text="Amplitud", row=3, col=1)
 
+        plot_theme = _get_plot_theme()
         fig.update_layout(
-            height=750, margin=dict(l=40, r=20, t=90, b=60),
-            hovermode="x unified", showlegend=False,
-            paper_bgcolor="white", plot_bgcolor="white",
-            font=dict(color="black"),
-            hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+            height=750,
+            margin=dict(l=40, r=20, t=90, b=60),
+            hovermode="x unified",
+            showlegend=False,
         )
-        fig.update_xaxes(showgrid=True, gridcolor="lightgray", linecolor="black",
-                         tickfont=dict(color="black"), title_font=dict(color="black"))
-        fig.update_yaxes(showgrid=True, gridcolor="lightgray", linecolor="black",
-                         tickfont=dict(color="black"), title_font=dict(color="black"))
+        _apply_plot_theme(fig, plot_theme, font_size=12)
         fig.update_xaxes(rangeslider_visible=True, row=3, col=1)
 
         st.plotly_chart(fig, use_container_width=True, theme=None)
@@ -1637,19 +1634,27 @@ def render_dinamicas_guia1():
         freq = sim2["freq"]; X_in = sim2["X_in"]; X_out = sim2["X_out"]
         fmax_plot = max(key2["f1"], key2["f2"]) * 4.0
 
-        fig2, (a1, a2) = plt.subplots(2, 1, figsize=(7, 6), sharex=True)
-        a1.semilogy(freq, X_in + 1e-12)
-        a1.set_xlim(0, fmax_plot)
-        a1.set_ylabel("Magnitud (u.a.)")
-        a1.set_title("Espectro antes de la no linealidad")
-        a1.grid(True, which="both", linestyle=":", alpha=0.5)
-
-        a2.semilogy(freq, X_out + 1e-12)
-        a2.set_xlim(0, fmax_plot)
-        a2.set_xlabel("Frecuencia (Hz)")
-        a2.set_ylabel("Magnitud (u.a.)")
-        a2.set_title("Espectro después de la no linealidad")
-        a2.grid(True, which="both", linestyle=":", alpha=0.5)
+        fig2 = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.12,
+            subplot_titles=("Espectro antes de la no linealidad", "Espectro después de la no linealidad"),
+        )
+        fig2.add_trace(go.Scattergl(x=freq, y=X_in + 1e-12, mode="lines"), row=1, col=1)
+        fig2.add_trace(go.Scattergl(x=freq, y=X_out + 1e-12, mode="lines"), row=2, col=1)
+        fig2.update_xaxes(range=[0, fmax_plot], row=1, col=1)
+        fig2.update_xaxes(range=[0, fmax_plot], title_text="Frecuencia (Hz)", row=2, col=1)
+        fig2.update_yaxes(type="log", title_text="Magnitud (u.a.)", row=1, col=1)
+        fig2.update_yaxes(type="log", title_text="Magnitud (u.a.)", row=2, col=1)
+        fig2.update_layout(
+            height=650,
+            margin=dict(l=40, r=20, t=90, b=60),
+            hovermode="x unified",
+            showlegend=False,
+        )
+        plot_theme = _get_plot_theme()
+        _apply_plot_theme(fig2, plot_theme, font_size=12)
 
         labels = [(key2["f1"], "f1"), (key2["f2"], "f2")]
         imd_freqs = {
@@ -1660,20 +1665,38 @@ def render_dinamicas_guia1():
             "2f1+f2": 2 * key2["f1"] + key2["f2"],
             "2f2+f1": 2 * key2["f2"] + key2["f1"],
         }
+        label_font = dict(size=12, color=plot_theme["font_color"])
         for f_c, lab in labels:
             if 0 < f_c < fmax_plot:
                 idx = np.argmin(np.abs(freq - f_c))
                 amp = X_out[idx] + 1e-12
-                a2.text(f_c, amp * 1.5, lab, ha="center", va="bottom", fontsize=8, rotation=90, color="black")
+                fig2.add_annotation(
+                    x=f_c,
+                    y=amp * 1.5,
+                    text=lab,
+                    showarrow=False,
+                    textangle=90,
+                    xref="x2",
+                    yref="y2",
+                    font=label_font,
+                )
 
         for lab, f_imd in imd_freqs.items():
             if 0 < f_imd < fmax_plot:
                 idx = np.argmin(np.abs(freq - f_imd))
                 amp = X_out[idx] + 1e-12
-                a2.text(f_imd, amp * 1.5, lab, ha="center", va="bottom", fontsize=8, rotation=90, color="black")
+                fig2.add_annotation(
+                    x=f_imd,
+                    y=amp * 1.5,
+                    text=lab,
+                    showarrow=False,
+                    textangle=90,
+                    xref="x2",
+                    yref="y2",
+                    font=label_font,
+                )
 
-        fig2.tight_layout(pad=3.0)
-        st.pyplot(fig2)
+        st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         q1 = st.radio("Tipo de distorsión:", ["Armónica", "Intermodulación"], index=None, key="g1_dyn2_q1")
         q2 = st.radio("¿Qué ocurre al aumentar k3?", ["Disminuyen", "Aumentan"], index=None, key="g1_dyn2_q2")
