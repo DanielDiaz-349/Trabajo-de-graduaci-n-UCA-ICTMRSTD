@@ -49,25 +49,41 @@ from github_uploader import upload_bytes_to_github_results
 # TEMA DE GRÁFICAS
 # =========================
 def _get_plot_theme():
-    base_theme = (st.get_option("theme.base") or "light").lower()
-    if base_theme == "dark":
+    ui_theme = st.session_state.get("ui_theme")
+    if ui_theme:
+        theme_name = ui_theme.lower()
+    else:
+        base_theme = (st.get_option("theme.base") or "light").lower()
+        theme_name = "obscuro" if base_theme == "dark" else "blanco"
+
+    if theme_name == "obscuro":
         return {
-            "paper_bgcolor": "white",
-            "plot_bgcolor": "white",
-            "font_color": "black",
-            "grid_color": "lightgray",
-            "axis_color": "black",
-            "hover_bg": "white",
-            "hover_font": "black",
+            "paper_bgcolor": "#0f1113",
+            "plot_bgcolor": "#2b2f36",
+            "font_color": "#ffffff",
+            "grid_color": "#444444",
+            "axis_color": "#ffffff",
+            "hover_bg": "#2b2f36",
+            "hover_font": "#ffffff",
+        }
+    if theme_name == "rosa":
+        return {
+            "paper_bgcolor": "#fff6fb",
+            "plot_bgcolor": "#ffffff",
+            "font_color": "#330033",
+            "grid_color": "#f0c6dc",
+            "axis_color": "#330033",
+            "hover_bg": "#ffd6eb",
+            "hover_font": "#330033",
         }
     return {
-        "paper_bgcolor": "#1f1f1f",
-        "plot_bgcolor": "#1f1f1f",
-        "font_color": "white",
-        "grid_color": "#444444",
-        "axis_color": "white",
-        "hover_bg": "#1f1f1f",
-        "hover_font": "white",
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "font_color": "#000000",
+        "grid_color": "#d9d9d9",
+        "axis_color": "#000000",
+        "hover_bg": "#ffffff",
+        "hover_font": "#000000",
     }
 
 
@@ -355,6 +371,7 @@ def apply_theme(theme_name: str):
     Tema visual. OJO: CSS sin llaves extra (tu versión tenía '}}' y podía romper estilos).
     """
     t = theme_name.lower()
+    st.session_state["ui_theme"] = t
 
     if t == "obscuro":
         bg = "#0f1113"
