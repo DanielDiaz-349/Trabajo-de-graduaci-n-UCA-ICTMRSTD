@@ -512,12 +512,38 @@ def export_results_pdf_guia1_bytes(student_info: dict, resultados: list, logo_pa
     ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     pdf_filename = f"guia1_{registro}_{nombre}_{ts}.pdf"
 
+    # ---- Calcular nota global (promedio) a partir de resultados ----
+    notas = []
+    for it in resultados or []:
+        n = it.get("nota", None)
+        try:
+            if n is not None:
+                notas.append(float(n))
+        except Exception:
+            pass
+    nota_global = (sum(notas) / len(notas)) if notas else None
+
     buf = BytesIO()
     c = rcanvas.Canvas(buf, pagesize=letter)
     width, height = letter
 
-    # Encabezado
+    # Helper: nueva página
     y = height - 50
+    def new_page():
+        nonlocal y
+        c.showPage()
+        y = height - 50
+        c.setFont(base_font, 11)
+
+    # Helper: imprimir key/value con salto de página
+    def draw_kv(x, k, v):
+        nonlocal y
+        if y < 90:
+            new_page()
+        c.drawString(x, y, f"- {_safe_str(k)}: {_safe_str(v)}")
+        y -= 14
+
+    # Encabezado
     c.setFont(base_font, 16)
     c.drawString(50, y, "Guía 1 - Resultados de dinámicas")
     y -= 22
@@ -530,13 +556,82 @@ def export_results_pdf_guia1_bytes(student_info: dict, resultados: list, logo_pa
         except Exception:
             pass
 
+    # Datos del estudiante
     c.setFont(base_font, 11)
     c.drawString(50, y, f"Nombre: {_safe_str(student_info.get('nombre', ''))}")
     y -= 16
     c.drawString(50, y, f"Registro: {_safe_str(student_info.get('registro', ''))}")
     y -= 16
+
+    dob = student_info.get("dob", "") or student_info.get("fecha_nacimiento", "")
+    if dob:
+        c.drawString(50, y, f"Fecha de nacimiento: {_safe_str(dob)}")
+        y -= 16
+
     c.drawString(50, y, f"Fecha: {ts.replace('_', ' ')}")
-    y -= 22
+    y -= 18
+
+    # Nota global
+    if nota_global is not None:
+        c.setFont(base_font, 12)
+        c.drawString(50, y, f"Nota global (promedio): {nota_global:.2f} / 10")
+        y -= 18
+        c.setFont(base_font, 11)
+
+    y -= 6
+
+    # Cuerpo: resultados
+    for item in (resultados or []):
+        if y < 120:
+            new_page()
+
+        titulo = _safe_str(item.get("titulo", "Dinámica"))
+        ok = item.get("correctas", 0)
+        total = item.get("total", 0)
+        nota = item.get("nota", None)
+
+        # Título + aciertos + nota si existe
+        c.setFont(base_font, 13)
+        line = f"{titulo}  ({ok}/{total})"
+        if nota is not None:
+            try:
+                line += f"   Nota: {float(nota):.2f}/10"
+            except Exception:
+                line += f"   Nota: {_safe_str(nota)}"
+        c.drawString(50, y, line)
+        y -= 18
+
+        # Parámetros / clave
+        c.setFont(base_font, 10)
+        c.drawString(60, y, "Parámetros / clave:")
+        y -= 14
+        for k, v in (item.get("key", {}) or {}).items():
+            draw_kv(70, k, v)
+
+        y -= 6
+        if y < 100:
+            new_page()
+
+        # Respuestas del estudiante
+        c.drawString(60, y, "Respuestas del estudiante:")
+        y -= 14
+        for k, v in (item.get("answers", {}) or {}).items():
+            draw_kv(70, k, v)
+
+        y -= 10
+
+    # Pie (tema)
+    try:
+        c.setFont(base_font, 9)
+        c.drawCentredString(width / 2.0, 25, _safe_str(TEMA_TG))
+    except Exception:
+        pass
+
+    c.save()
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    return pdf_bytes, pdf_filename
+
 
     def new_page():
         nonlocal y
@@ -1395,101 +1490,110 @@ def render_dinamicas_guia1():
     st.markdown("---")
 
     # -------- ENVÍO FINAL --------
-    disabled = (not (state["dyn1"]["completed"] and state["dyn2"]["completed"])) or state.get("submitted", False)
+disabled = (not (state["dyn1"]["completed"] and state["dyn2"]["completed"])) or state.get("submitted", False)
 
-    if state.get("submitted", False):
-        st.info("Ya enviaste estas respuestas ✅")
+if state.get("submitted", False):
+    st.info("Ya enviaste estas respuestas ✅")
 
-    if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled, key="g1_send_github"):
-        # Datos del estudiante
-        nombre = (state.get("student", {}).get("name", "") or "").strip()
-        registro = (state.get("student", {}).get("id", "") or "").strip()
-        dob = (state.get("student", {}).get("dob", "") or "").strip()
+if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled, key="g1_send_github"):
+    # Datos del estudiante
+    nombre = (state.get("student", {}).get("name", "") or "").strip()
+    registro = (state.get("student", {}).get("id", "") or "").strip()
+    dob = (state.get("student", {}).get("dob", "") or "").strip()
 
-        # Claves y respuestas
-        dyn1_key = state["dyn1"]["key"]
-        dyn2_key = state["dyn2"]["key"]
-        ans1 = state["dyn1"]["answers"]
-        ans2 = state["dyn2"]["answers"]
+    # Claves y respuestas
+    dyn1_key = state["dyn1"]["key"]
+    dyn2_key = state["dyn2"]["key"]
+    ans1 = state["dyn1"]["answers"]
+    ans2 = state["dyn2"]["answers"]
 
-        correct1 = {"q1": dyn1_key["q1"], "q2": dyn1_key["q2"], "q3": dyn1_key["q3"], "q4": dyn1_key["q4"]}
-        correct2 = {"q1": dyn2_key["q1"], "q2": dyn2_key["q2"], "q3": dyn2_key["q3"]}
+    correct1 = {"q1": dyn1_key["q1"], "q2": dyn1_key["q2"], "q3": dyn1_key["q3"], "q4": dyn1_key["q4"]}
+    correct2 = {"q1": dyn2_key["q1"], "q2": dyn2_key["q2"], "q3": dyn2_key["q3"]}
 
-        def _count_correct(ans, corr):
-            return sum(1 for k, v in corr.items() if ans.get(k) == v)
+    def _count_correct(ans, corr):
+        return sum(1 for k, v in corr.items() if ans.get(k) == v)
 
-        c1 = _count_correct(ans1, correct1)
-        c2 = _count_correct(ans2, correct2)
+    c1 = _count_correct(ans1, correct1)
+    c2 = _count_correct(ans2, correct2)
 
-        resultados = [
-            {
-                "titulo": "Dinámica 1 — AWGN, SNR y BER",
-                "correctas": c1,
-                "total": 4,
-                "key": {
-                    "snr_dB": dyn1_key.get("snr"),
-                    "retardo_T": dyn1_key.get("delay"),
-                    "respuestas_correctas": correct1,
-                },
-                "answers": ans1,
+    score1 = {4: 10.0, 3: 8.0, 2: 6.0, 1: 4.0, 0: 0.0}.get(c1, 0.0)
+    score2 = {3: 10.0, 2: 8.0, 1: 6.0, 0: 0.0}.get(c2, 0.0)
+    nota_global = round((score1 + score2) / 2.0, 2)
+
+    # Mostrar notas en pantalla (IMPORTANTE)
+    st.success(
+        f"Notas calculadas ✅  |  Dinámica 1: {score1:.2f}/10  |  Dinámica 2: {score2:.2f}/10  |  Nota global: {nota_global:.2f}/10"
+    )
+    state["nota_global"] = nota_global  # opcional
+
+    resultados = [
+        {
+            "titulo": "Dinámica 1 — AWGN, SNR y BER",
+            "correctas": c1,
+            "total": 4,
+            "nota": score1,
+            "key": {"SNR (dB)": dyn1_key["snr"], "Retardo (T)": dyn1_key["delay"]},
+            "answers": ans1,
+        },
+        {
+            "titulo": "Dinámica 2 — Intermodulación",
+            "correctas": c2,
+            "total": 3,
+            "nota": score2,
+            "key": {
+                "f1 (Hz)": dyn2_key["f1"],
+                "f2 (Hz)": dyn2_key["f2"],
+                "A1": dyn2_key["A1"],
+                "A2": dyn2_key["A2"],
+                "k3": dyn2_key["k3"],
+                "IM3_1 (Hz)": dyn2_key["im3_1"],
+                "IM3_2 (Hz)": dyn2_key["im3_2"],
             },
-            {
-                "titulo": "Dinámica 2 — Intermodulación",
-                "correctas": c2,
-                "total": 3,
-                "key": {
-                    "f1_Hz": dyn2_key.get("f1"),
-                    "f2_Hz": dyn2_key.get("f2"),
-                    "A1": dyn2_key.get("A1"),
-                    "A2": dyn2_key.get("A2"),
-                    "k3": dyn2_key.get("k3"),
-                    "IM3_1": dyn2_key.get("im3_1"),
-                    "IM3_2": dyn2_key.get("im3_2"),
-                    "respuestas_correctas": correct2,
-                },
-                "answers": ans2,
-            },
-        ]
+            "answers": ans2,
+        },
+    ]
 
-        # Exportar como PDF (en memoria) y subir a GitHub
-        if not REPORTLAB_AVAILABLE:
-            st.error(
-                "No se puede generar el PDF porque 'reportlab' no está disponible. "
-                "Agrega 'reportlab' a requirements.txt."
-            )
+    # Exportar como PDF (en memoria) y subir a GitHub
+    if not REPORTLAB_AVAILABLE:
+        st.error(
+            "No se puede generar el PDF porque 'reportlab' no está disponible. "
+            "Agrega 'reportlab' a requirements.txt."
+        )
+    else:
+        pdf_bytes, pdf_filename = export_results_pdf_guia1_bytes(
+            student_info={"nombre": nombre, "registro": registro, "dob": dob},
+            resultados=resultados,
+            logo_path=LOGO_UCA_PATH if LOGO_UCA_PATH else None,
+        )
+
+        repo_path = f"guia1/{pdf_filename}"
+        commit_msg = f"Guía 1 - {registro} - {nombre}".strip()
+
+        ok, info = upload_bytes_to_github_results(
+            content_bytes=pdf_bytes,
+            repo_path=repo_path,
+            commit_message=commit_msg,
+        )
+
+        # Descarga opcional (sin escribir archivos en disco)
+        st.download_button(
+            "Descargar PDF (copia)",
+            data=pdf_bytes,
+            file_name=pdf_filename,
+            mime="application/pdf",
+            key="g1_download_pdf_after_submit",
+        )
+
+        if ok:
+            state["submitted"] = True
+            st.success("¡Listo! PDF generado y subido al repositorio.")
+            st.info(f"Nota global registrada: {nota_global:.2f}/10")
+            if isinstance(info, dict) and info.get("html_url"):
+                st.link_button("Ver archivo en GitHub", info["html_url"])
+            st.write("Ruta en el repositorio:", repo_path)
         else:
-            pdf_bytes, pdf_filename = export_results_pdf_guia1_bytes(
-                student_info={"nombre": nombre, "registro": registro, "dob": dob},
-                resultados=resultados,
-                logo_path=LOGO_UCA_PATH if LOGO_UCA_PATH else None,
-            )
+            st.error(f"No se pudo subir el PDF: {info}")
 
-            repo_path = f"guia1/{pdf_filename}"
-            commit_msg = f"Guía 1 - {registro} - {nombre}".strip()
-
-            ok, info = upload_bytes_to_github_results(
-                content_bytes=pdf_bytes,
-                repo_path=repo_path,
-                commit_message=commit_msg,
-            )
-
-            # Descarga opcional (sin escribir archivos en disco)
-            st.download_button(
-                "Descargar PDF (copia)",
-                data=pdf_bytes,
-                file_name=pdf_filename,
-                mime="application/pdf",
-                key="g1_download_pdf_after_submit",
-            )
-
-            if ok:
-                state["submitted"] = True
-                st.success("¡Listo! PDF generado y subido al repositorio.")
-                if isinstance(info, dict) and info.get("html_url"):
-                    st.link_button("Ver archivo en GitHub", info["html_url"])
-                st.write("Ruta en el repositorio:", repo_path)
-            else:
-                st.error(f"No se pudo subir el PDF: {info}")
 # =========================
 # GUÍA 1 (TABS)
 # =========================
