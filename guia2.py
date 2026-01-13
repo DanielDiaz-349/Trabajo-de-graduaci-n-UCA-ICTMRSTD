@@ -1812,21 +1812,25 @@ def render_dinamicas_guia2():
 
     # -------- EVALUACIÓN Y ENVÍO FINAL --------
     # Respuestas seleccionadas (se guardan automáticamente por los keys de Streamlit)
+    # ---------- TOMAR RESPUESTAS DESDE SESSION_STATE (mismas keys que usan las radios) ----------
     d1_ans = {
-        "q1": st.session_state.get("g2_d1_q1", "Seleccione una opción"),
-        "q2": st.session_state.get("g2_d1_q2", "Seleccione una opción"),
-        "q3": st.session_state.get("g2_d1_q3", "Seleccione una opción"),
+        "q1": st.session_state.get("g2_dyn1_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_dyn1_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_dyn1_q3", "Seleccione una opción"),
     }
+
     d2_ans = {
-        "q1": st.session_state.get("g2_d2_q1", "Seleccione una opción"),
-        "q2": st.session_state.get("g2_d2_q2", "Seleccione una opción"),
-        "q3": st.session_state.get("g2_d2_q3", "Seleccione una opción"),
+        "q1": st.session_state.get("g2_dyn2_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_dyn2_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_dyn2_q3", "Seleccione una opción"),
     }
+
     d3_ans = {
-        "q1": st.session_state.get("g2_d3_q1", "Seleccione una opción"),
-        "q2": st.session_state.get("g2_d3_q2", "Seleccione una opción"),
-        "q3": st.session_state.get("g2_d3_q3", "Seleccione una opción"),
+        "q1": st.session_state.get("g2_dyn3_q1", "Seleccione una opción"),
+        "q2": st.session_state.get("g2_dyn3_q2", "Seleccione una opción"),
+        "q3": st.session_state.get("g2_dyn3_q3", "Seleccione una opción"),
     }
+
 
     def _done(ans_dict: dict) -> bool:
         return all((v is not None) and (str(v).strip() != "") and (v != "Seleccione una opción") for v in ans_dict.values())
