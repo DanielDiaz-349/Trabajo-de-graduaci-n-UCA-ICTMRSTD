@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import os
 import math
+import json
+import re
+from datetime import datetime
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -17,6 +20,7 @@ import streamlit as st
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from github_uploader import upload_bytes_to_github_results
 
 # ----------------------------
 # Texto base (desde GUIA5.docx)
@@ -807,15 +811,55 @@ def render_ejemplo3():
 # Dinámicas (evaluación)
 # ----------------------------
 
+def _ensure_student_info(form_key: str) -> Dict[str, str] | None:
+    if "student_info" not in st.session_state:
+        st.session_state.student_info = {"name": "", "id": "", "dob": ""}
+
+    info = st.session_state.student_info
+
+    with st.form(form_key):
+        st.write("Datos del estudiante")
+        name = st.text_input("Nombre completo", value=info["name"])
+        carnet = st.text_input("Carné", value=info["id"])
+        dob = st.text_input("Fecha de nacimiento (YYYY-MM-DD)", value=info["dob"])
+        enviar = st.form_submit_button("Guardar / actualizar datos")
+
+    if enviar:
+        if not name or not carnet or not dob:
+            st.warning("Completa nombre, carné y fecha de nacimiento.")
+            return None
+        st.session_state.student_info = {"name": name, "id": carnet, "dob": dob}
+        st.success("Datos del estudiante guardados correctamente.")
+
+    return st.session_state.student_info
+
+
+def _sanitize_filename(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "_", value.strip())
+    cleaned = cleaned.strip("_")
+    return cleaned or fallback
+
+
+def _build_results_payload(student_info: Dict[str, str], results: Dict[str, Any]) -> bytes:
+    payload = {
+        "guia": 5,
+        "submitted_at": datetime.now().isoformat(timespec="seconds"),
+        "student": student_info,
+        "results": results,
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+
+
 def _init_dyn_state():
     if "guia5_dinamicas" not in st.session_state:
         st.session_state.guia5_dinamicas = {
-            "alumno": {"nombre": "", "carnet": "", "seccion": ""},
             "dyn1": {"seed": None, "key": None},
             "dyn2": {"seed": None, "key": None},
             "dyn3": {"seed": None, "key": None},
             "submitted": False,
             "last_result": None,
+            "uploaded": False,
+            "last_upload": None,
         }
 
 
@@ -1022,14 +1066,24 @@ def render_dinamicas_guia5():
 
     state = st.session_state.guia5_dinamicas
 
-    with st.expander("Registro del estudiante", expanded=True):
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            state["alumno"]["nombre"] = st.text_input("Nombre completo", value=state["alumno"]["nombre"], key="g5_reg_nombre")
-        with c2:
-            state["alumno"]["carnet"] = st.text_input("Carnet / ID", value=state["alumno"]["carnet"], key="g5_reg_carnet")
-        with c3:
-            state["alumno"]["seccion"] = st.text_input("Sección / Grupo", value=state["alumno"]["seccion"], key="g5_reg_seccion")
+    student_info = _ensure_student_info("g5_form_student")
+    if not student_info or not all(student_info.values()):
+        st.markdown(
+            """
+            <div style="
+                background-color: #fff3cd;
+                color: #000000;
+                padding: 12px;
+                border-radius: 6px;
+                border: 1px solid #ffeeba;
+                font-weight: 500;
+            ">
+                ⚠️ Ingresa tus datos para habilitar las dinámicas.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
 
     st.divider()
     ans1, cor1 = _render_dyn1()
@@ -1039,7 +1093,13 @@ def render_dinamicas_guia5():
     ans3, cor3 = _render_dyn3()
     st.divider()
 
-    if st.button("Enviar respuestas", key="g5_submit"):
+    if state.get("uploaded"):
+        st.info("Ya enviaste estas respuestas ✅")
+        last_upload = state.get("last_upload") or {}
+        if isinstance(last_upload, dict) and last_upload.get("html_url"):
+            st.link_button("Ver archivo en GitHub", last_upload["html_url"])
+
+    if st.button("Enviar respuestas", key="g5_submit", disabled=state.get("uploaded", False)):
         all_answers = [ans1, ans2, ans3]
         missing = 0
         for a in all_answers:
@@ -1055,6 +1115,37 @@ def render_dinamicas_guia5():
 
         state["submitted"] = True
         state["last_result"] = {"scores": {"dyn1": s1, "dyn2": s2, "dyn3": s3}, "nota": nota}
+
+        results_payload = {
+            "scores": {"dyn1": s1, "dyn2": s2, "dyn3": s3},
+            "nota": nota,
+            "answers": {"dyn1": ans1, "dyn2": ans2, "dyn3": ans3},
+            "correct": {"dyn1": cor1, "dyn2": cor2, "dyn3": cor3},
+        }
+        content_bytes = _build_results_payload(student_info, results_payload)
+
+        safe_id = _sanitize_filename(student_info.get("id", ""), "sin_id")
+        safe_name = _sanitize_filename(student_info.get("name", ""), "sin_nombre")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"guia5_{safe_id}_{safe_name}_{timestamp}.json"
+        repo_path = f"guia5/{filename}"
+        commit_msg = f"Guía 5 - {safe_id} - {student_info.get('name','')}".strip()
+
+        ok, info = upload_bytes_to_github_results(
+            content_bytes=content_bytes,
+            repo_path=repo_path,
+            commit_message=commit_msg,
+        )
+        if ok:
+            state["uploaded"] = True
+            state["last_upload"] = info
+            st.success("¡Listo! Respuestas enviadas y archivo subido al repositorio.")
+            if isinstance(info, dict) and info.get("html_url"):
+                st.link_button("Ver archivo en GitHub", info["html_url"])
+            st.write("Ruta en el repositorio:", repo_path)
+        else:
+            err_msg = info.get("error") if isinstance(info, dict) else str(info)
+            st.error(f"No se pudo subir el archivo: {err_msg}")
 
     if state.get("submitted") and state.get("last_result"):
         res = state["last_result"]
