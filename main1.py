@@ -113,9 +113,7 @@ Analizar diferentes fuentes de ruido y los efectos que producen sobre señales e
 - Proporcionar al estudiante herramientas de aprendizaje y retroalimentación
 """
 
-
 INTRO_FULL_TEXT = r"""
-
 En todo sistema de telecomunicaciones existe un elemento inevitable: la incertidumbre. Dicha incertidumbre proviene tanto de la naturaleza aleatoria de la información como de la presencia permanente de perturbaciones indeseadas agregadas a una señal, denominadas ruido. Por ello, el análisis y diseño de sistemas modernos de comunicación exige un enfoque basado en probabilidad y procesos aleatorios. A partir de la década de 1940, se adoptaron formalmente métodos probabilísticos para optimizar el desempeño de sistemas de comunicación.
 
 **Modelo general de un sistema de comunicación**
@@ -123,143 +121,36 @@ En todo sistema de telecomunicaciones existe un elemento inevitable: la incertid
 Un sistema de comunicación típico está compuesto por transmisor, canal y receptor, junto con los transductores de entrada y salida. El transductor convierte magnitudes físicas en señales eléctricas, el transmisor modula y adapta la señal al canal, el canal transporta la señal con pérdidas e interferencias, y el receptor intenta recuperar la información original compensando distorsiones generadas a lo largo del trayecto.
 
 La calidad con la que la señal llega al receptor depende de dos factores principales:
-
 - Las características del canal.
 - Las perturbaciones añadidas a la señal, entre ellas el ruido y la distorsión por no linealidad.
 
-**Canales de transmisión**
-
-Existen muchos tipos de canales de transmisión, entre los más comunes se encuentran: canales de propagación de ondas electromagnéticas, canales de propagación de ondas electromagnéticas guiados y enlaces ópticos. 
-
-Canales de propagación de ondas electromagnéticas
-
-El principio básico involucrado es el acoplamiento de la energía electromagnética con un medio de propagación, el cual puede ser el espacio libre o la atmósfera, mediante un elemento de radiación conocido como antena. 
-
-Canales guiados y enlaces opticos
-
-Incluyen par trenzado, cables coaxiales, guías de onda metálicas y fibras ópticas. En estos medios la señal permanece confinada físicamente y la propagación depende de parámetros eléctricos del material como permitividad y permeabilidad. Estos canales se emplean donde se requiere alta capacidad, baja atenuación o inmunidad al ruido externo.
-
 **Naturaleza y clasificación del ruido**
+El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado o no correlacionado.
 
-El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado (producto de la no linealidad y dependiente de la señal) o no correlacionado (presente incluso sin señal).
-
-Ruido no correlacionado
-
-Incluye las fuentes externas (atmosféricas, extraterrestres e industriales) y las internas generadas por dispositivos electrónicos (ruido de disparo, de tiempo de tránsito y ruido térmico, este ultimo es considerado el más importante por su carácter aditivo y su presencia en todas las frecuencias).
-
-Ruido correlacionado
-
-Resulta de la no linealidad de los dispositivos e incluye:
-
-- Distorsión armónica, donde aparecen armónicas de la señal fundamental.
-- Intermodulación, donde múltiples señales interactúan dentro de un dispositivo no lineal generando nuevas frecuencias.
-
-La intermodulación es especialmente crítica en sistemas multicanal, pues produce términos que pueden caer dentro del ancho de banda útil e interferir directamente con la señal deseada.
-
-**Distorsión por intermodulación**
-
-La distorsión por intermodulación ocurre cuando dos o más señales de diferentes frecuencias atraviesan un dispositivo no lineal, como un amplificador o mezclador, produciendo componentes de frecuencia adicionales que son sumas y diferencias de las frecuencias originales y sus múltiplos armónicos. Estas nuevas frecuencias llamadas productos de intermodulación no estaban presentes en la entrada y pueden caer dentro del ancho de banda útil, interfiriendo con la señal original o con canales adyacentes.
-
-Se introduce el termino coeficiente cubico o k3 que es un parámetro que aparece en el modelo polinómico utilizado para describir la no linealidad de un amplificador o cualquier dispositivo activo. Es fundamental para entender la intermodulación de tercer orden (IM3), que es la forma más problemática de distorsión en sistemas de RF y comunicaciones.
-
-Cuando dos señales de entrada de frecuencias f1 y f2 pasan por un dispositivo no lineal, aparecen nuevas frecuencias dadas por la **ecuación (1)**
-
-$$
-f_{IM} = m f_1 \pm n f_2 \tag{1}
-$$
-
-
-
-Donde:
-
-m y n son enteros positivos
-la suma o resta da lugar a distintas combinaciones
-los terminos m+n=k se llaman productos de intermodulación de orden k
-
-Los productos de tecer orden son los más problematicos porque sus frecuencias son muy cercanas a las señales originales, lo que los hace difíciles de eliminar con filtros. 
-
-Por ejemplo, un amplificador es un dispositivo no lineal de tercer orden, los productos de intermodulación son: 
-
- 2f1-f2, 2f2-f1, 3f1, 3f2, 2f1+f2}, 2f2+f1.
-
-
-**Adición de ruido a una señal**
-
-En un sistema real, el canal no solo atenúa y distorsiona la señal sino que introduce ruido. La señal recibida puede representarse en la **ecuación (2)**:
-
-$$
-r(t) = s(t) + n(t) \tag{2}
-$$
-
-
-
-donde:
-
-- s(t) es la señal transmitida posiblemente distorsionada
-- n(t) corresponde al ruido agregado por fuentes internas y externas.
-
-**Ruido blanco aditivo gaussiano**
-
-Para análisis y diseño, una de las aproximaciones más utilizadas es el modelo AWGN (Additive White Gaussian Noise), que representa un tipo de ruido:
-
-- Aditivo: se suma linealmente a la señal.
-- Blanco: tiene potencia constante en todas las frecuencias.
-- Gaussiano: su amplitud sigue una distribución normal.
-
-El AWGN modela adecuadamente:
-
-- Ruido térmico en componentes electrónicos.
-- Ruido de fondo en canales de radio.
-- El comportamiento agregado de muchas fuentes pequeñas e independientes.
-
-Aunque simplificado, este modelo es ampliamente aceptado en el diseño teórico de moduladores y detectores digitales y analógicos por su precisión estadística y su facilidad matemática.
+**Ruido blanco aditivo gaussiano (AWGN)**
+Es un modelo ampliamente utilizado: aditivo, blanco y gaussiano.
 
 **Relación Señal-Ruido (SNR)**
+\[
+\mathrm{SNR}=\frac{P_s}{P_n}, \quad
+\mathrm{SNR}_{\mathrm{dB}}=10\log_{10}\left(\frac{P_s}{P_n}\right)
+\]
 
-El desempeño de un sistema en presencia de ruido suele medirse con la relación señal-ruido (SNR) definido en la **ecuación (3)**:
-
-$$
-\mathrm{SNR} = \frac{P_s}{P_n} \tag{3}
-$$
-
-
-donde Ps es la potencia de la señal útil y Pn es la potencia del ruido.
-Se expresa en decibelos en la **ecuación (4)**: 
-
-$$
-\mathrm{SNR}_{\mathrm{dB}} = 10\log_{10}\!\left(\frac{P_s}{P_n}\right) \tag{4}
-$$
-
-Un SNR alto implica que el receptor puede distinguir adecuadamente la señal del ruido, reduciendo errores en detección. Por el contrario, un SNR bajo aumenta la probabilidad de error y limita el ancho de banda útil del canal.
-
-El SNR está directamente relacionado con:
-
-- La distancia de transmisión.
-- El tipo de canal.
-- La potencia transmitida.
-- Las propiedades del ruido generado en el sistema.
-
-**Tasa de error de bit (BER)**
-
-Es la razón entre el número de bits erróneos y el número total de bits recibidos o visto de otra forma, la probabilidad de que un bit recibido sea incorrecto
-
-
-BER= número de bits erróneos / total de bits recibidos 
-
-
-**La calidad de la comunicación depende del equilibrio entre:**
-
-- El canal.
-- Las fuentes de ruido.
-- Las métricas de desempeño.
-- La capacidad del receptor para filtrar y detectar señales distorsionadas.
-
+**BER**
+Es la razón entre bits erróneos y bits totales recibidos.
 """
 
 MATERIALES_TEXT = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- Dispositivo con acceso a internet
+- Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
+- Python instalado (versión 3.8 o superior recomendada).
+- Un entorno de desarrollo como Visual Studio Code o PyCharm.
+- Bibliotecas:
+  - numpy
+  - matplotlib
+  - streamlit
+  - scipy (opcional)
 """
 
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
@@ -1505,17 +1396,19 @@ def render_dinamicas_guia1():
 
     # -------- ENVÍO FINAL --------
     disabled = (not (state["dyn1"]["completed"] and state["dyn2"]["completed"])) or state.get("submitted", False)
+
     if state.get("submitted", False):
         st.info("Ya enviaste estas respuestas ✅")
 
-    if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled):
-        import datetime
-        import json
-        import re
+    if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled, key="g1_send_github"):
+        # Datos del estudiante
+        nombre = (state.get("student", {}).get("name", "") or "").strip()
+        registro = (state.get("student", {}).get("id", "") or "").strip()
+        dob = (state.get("student", {}).get("dob", "") or "").strip()
 
+        # Claves y respuestas
         dyn1_key = state["dyn1"]["key"]
         dyn2_key = state["dyn2"]["key"]
-
         ans1 = state["dyn1"]["answers"]
         ans2 = state["dyn2"]["answers"]
 
@@ -1528,45 +1421,75 @@ def render_dinamicas_guia1():
         c1 = _count_correct(ans1, correct1)
         c2 = _count_correct(ans2, correct2)
 
-        score1 = {4: 10, 3: 8, 2: 6, 1: 4}.get(c1, 0)
-        score2 = {3: 10, 2: 8, 1: 6}.get(c2, 0)
+        resultados = [
+            {
+                "titulo": "Dinámica 1 — AWGN, SNR y BER",
+                "correctas": c1,
+                "total": 4,
+                "key": {
+                    "snr_dB": dyn1_key.get("snr"),
+                    "retardo_T": dyn1_key.get("delay"),
+                    "respuestas_correctas": correct1,
+                },
+                "answers": ans1,
+            },
+            {
+                "titulo": "Dinámica 2 — Intermodulación",
+                "correctas": c2,
+                "total": 3,
+                "key": {
+                    "f1_Hz": dyn2_key.get("f1"),
+                    "f2_Hz": dyn2_key.get("f2"),
+                    "A1": dyn2_key.get("A1"),
+                    "A2": dyn2_key.get("A2"),
+                    "k3": dyn2_key.get("k3"),
+                    "IM3_1": dyn2_key.get("im3_1"),
+                    "IM3_2": dyn2_key.get("im3_2"),
+                    "respuestas_correctas": correct2,
+                },
+                "answers": ans2,
+            },
+        ]
 
-                    # Exportar como PDF (en memoria) y subir a GitHub
-            if not REPORTLAB_AVAILABLE:
-                st.error("No se puede generar el PDF porque 'reportlab' no está disponible. Agrega 'reportlab' a requirements.txt.")
+        # Exportar como PDF (en memoria) y subir a GitHub
+        if not REPORTLAB_AVAILABLE:
+            st.error(
+                "No se puede generar el PDF porque 'reportlab' no está disponible. "
+                "Agrega 'reportlab' a requirements.txt."
+            )
+        else:
+            pdf_bytes, pdf_filename = export_results_pdf_guia1_bytes(
+                student_info={"nombre": nombre, "registro": registro, "dob": dob},
+                resultados=resultados,
+                logo_path=LOGO_UCA_PATH if LOGO_UCA_PATH else None,
+            )
+
+            repo_path = f"guia1/{pdf_filename}"
+            commit_msg = f"Guía 1 - {registro} - {nombre}".strip()
+
+            ok, info = upload_bytes_to_github_results(
+                content_bytes=pdf_bytes,
+                repo_path=repo_path,
+                commit_message=commit_msg,
+            )
+
+            # Descarga opcional (sin escribir archivos en disco)
+            st.download_button(
+                "Descargar PDF (copia)",
+                data=pdf_bytes,
+                file_name=pdf_filename,
+                mime="application/pdf",
+                key="g1_download_pdf_after_submit",
+            )
+
+            if ok:
+                state["submitted"] = True
+                st.success("¡Listo! PDF generado y subido al repositorio.")
+                if isinstance(info, dict) and info.get("html_url"):
+                    st.link_button("Ver archivo en GitHub", info["html_url"])
+                st.write("Ruta en el repositorio:", repo_path)
             else:
-                pdf_bytes, pdf_filename = export_results_pdf_guia1_bytes(
-                    student_info={"nombre": nombre, "registro": registro},
-                    resultados=resultados,
-                    logo_path=LOGO_UCA_PATH if LOGO_UCA_PATH else None,
-                )
-
-                repo_path = f"guia1/{pdf_filename}"
-                commit_msg = f"Guía 1 - {registro} - {nombre}"
-
-                ok, info = upload_bytes_to_github_results(
-                    data_bytes=pdf_bytes,
-                    repo_path=repo_path,
-                    commit_message=commit_msg,
-                )
-
-                # Descarga local (sin escribir archivos en disco)
-                st.download_button(
-                    "Descargar PDF (copia)",
-                    data=pdf_bytes,
-                    file_name=pdf_filename,
-                    mime="application/pdf",
-                    key="g1_pdf_download_after_submit",
-                )
-
-                if ok:
-                    st.success("¡Listo! PDF generado y subido al repositorio.")
-                    if isinstance(info, dict) and info.get("html_url"):
-                        st.markdown(f"[Ver archivo en GitHub]({info['html_url']})")
-                    st.session_state["g1_submitted"] = True
-                else:
-                    st.error(f"No se pudo subir el PDF: {info}")
-
+                st.error(f"No se pudo subir el PDF: {info}")
 # =========================
 # GUÍA 1 (TABS)
 # =========================
