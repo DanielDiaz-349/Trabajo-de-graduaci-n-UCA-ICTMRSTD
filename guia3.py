@@ -1463,6 +1463,7 @@ def render_dinamica1():
             x=0.5,
             font=dict(color=theme["font_color"]),
         ),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
     )
     _apply_plot_theme(fig, theme)
     st.plotly_chart(fig, use_container_width=True)
@@ -1673,6 +1674,7 @@ def render_dinamica3():
             x=0.5,
             font=dict(color=theme["font_color"]),
         ),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
     )
     _apply_plot_theme(fig, theme)
     st.plotly_chart(fig, use_container_width=True)
