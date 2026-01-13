@@ -9,18 +9,18 @@ Ejemplos (1–5), Dinámicas (1–3) y Conclusiones.
 import os
 
 import datetime
-import base64
-import requests
+import importlib.util
+import io
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
-import json
 
 # ---------------------------------------------------------
 # Constantes generales (compatibles con Guía 1 y 2)
 # ---------------------------------------------------------
 
 from pathlib import Path
+from github_uploader import upload_bytes_to_github_results
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_UCA_PATH = str(BASE_DIR / "assets" / "logo_uca.png")
@@ -30,66 +30,30 @@ TEMA_TG = (
     "en sistemas de telecomunicaciones digitales"
 )
 
-def upload_file_to_github(local_path, path_in_repo):
-    """
-    Sube un archivo local a un repositorio de GitHub usando la API.
-    path_in_repo es la ruta destino, por ejemplo: 'guia3/archivo.pdf'
-    """
-    token = os.getenv("GITHUB_TOKEN")
-    user = os.getenv("GITHUB_USER")
-    repo = os.getenv("GITHUB_REPO")
-
-    if not token or not user or not repo:
-        print("Faltan variables de entorno GITHUB_TOKEN, GITHUB_USER o GITHUB_REPO.")
-        return False
-
-    if not os.path.exists(local_path):
-        print("El archivo local no existe:", local_path)
-        return False
-
-    with open(local_path, "rb") as f:
-        content = f.read()
-    b64_content = base64.b64encode(content).decode("utf-8")
-
-    url = f"https://api.github.com/repos/{user}/{repo}/contents/{path_in_repo}"
-    headers = {"Authorization": f"token {token}"}
-    data = {
-        "message": f"Subiendo {os.path.basename(local_path)} desde Streamlit (Guía 3)",
-        "content": b64_content
-    }
-
-    r = requests.put(url, headers=headers, json=data)
-    if r.status_code in (200, 201):
-        print("Subida correcta:", path_in_repo)
-        return True
-    else:
-        print("Error al subir a GitHub:", r.status_code, r.text)
-        return False
-
 # --- Opcional: generación de PDF (igual estilo Guía 1 y 2) ---
-try:
+REPORTLAB_AVAILABLE = importlib.util.find_spec("reportlab") is not None
+if REPORTLAB_AVAILABLE:
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas as rcanvas
-    REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
-
-RESULTS_DIR = "resultados_dinamicas"
-os.makedirs(RESULTS_DIR, exist_ok=True)
+else:
+    letter = None
+    rcanvas = None
 
 
-def export_results_pdf_guia3(filename_base, student_info, resultados):
+def export_results_pdf_guia3_bytes(student_info, resultados):
     """
     Genera un solo PDF con el resumen de TODAS las dinámicas de la Guía 3.
     """
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    base = f"{filename_base}_{ts}"
-    pdf_path = os.path.join(RESULTS_DIR, base + ".pdf")
+    nombre = (student_info.get("name") or "sin_nombre").strip().replace(" ", "_")
+    registro = (student_info.get("id") or "sin_id").strip().replace(" ", "_")
+    pdf_filename = f"guia3_{registro}_{nombre}_{ts}.pdf"
+    buffer = io.BytesIO()
 
     if not REPORTLAB_AVAILABLE:
-        return pdf_path  # no se puede generar, devolvemos ruta prevista
+        return b"", pdf_filename  # no se puede generar, devolvemos bytes vacíos
 
-    c = rcanvas.Canvas(pdf_path, pagesize=letter)
+    c = rcanvas.Canvas(buffer, pagesize=letter)
     width, height = letter
     left = 40
     top = height - 40
@@ -199,7 +163,9 @@ def export_results_pdf_guia3(filename_base, student_info, resultados):
     c.drawCentredString(width / 2.0, 30, TEMA_TG)
 
     c.save()
-    return pdf_path
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes, pdf_filename
 
 # =========================================================
 # Textos estáticos
@@ -1565,28 +1531,39 @@ def render_dinamicas_guia3():
             },
         }
 
-        pdf_path = export_results_pdf_guia3(
-            filename_base=f"guia3_{student_info.get('id','sin_id')}",
+        if not REPORTLAB_AVAILABLE:
+            st.error(
+                "No se puede generar el PDF porque 'reportlab' no está disponible. "
+                "Agrega 'reportlab' a requirements.txt."
+            )
+            return
+
+        pdf_bytes, pdf_filename = export_results_pdf_guia3_bytes(
             student_info=student_info,
             resultados=[res1, res2, res3],
         )
 
-        if not pdf_path:
+        if not pdf_bytes:
             st.error("No se pudo generar el PDF. Revisa ReportLab o permisos.")
             return
 
         # Subir a GitHub (si está configurado)
-        nombre_pdf_repo = os.path.basename(pdf_path)
-        ruta_repo = f"guia3/{nombre_pdf_repo}"
-        ok = upload_file_to_github(pdf_path, ruta_repo)
+        ruta_repo = f"guia3/{pdf_filename}"
+        commit_msg = f"Guía 3 - {student_info.get('id','sin_id')} - {student_info.get('name','')}".strip()
+        ok, info = upload_bytes_to_github_results(
+            content_bytes=pdf_bytes,
+            repo_path=ruta_repo,
+            commit_message=commit_msg,
+        )
 
         if ok:
             st.success("PDF generado y enviado correctamente a GitHub.")
-            st.write("Ruta local del PDF:", pdf_path)
+            if isinstance(info, dict) and info.get("html_url"):
+                st.link_button("Ver archivo en GitHub", info["html_url"])
             st.write("Ruta en el repositorio:", ruta_repo)
+            st.info("Consulta tu nota con el catedrático o instructor encargado.")
         else:
-            st.warning("El PDF se generó, pero no se pudo enviar a GitHub. Revisa el token/credenciales.")
-            st.write("Ruta local del PDF:", pdf_path)
+            st.error(f"No se pudo subir el PDF: {info}")
 
 
 def render_guia3():
