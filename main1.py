@@ -46,6 +46,61 @@ from github_uploader import upload_bytes_to_github_results
 
 
 # =========================
+# TEMA DE GRÁFICAS
+# =========================
+def _get_plot_theme():
+    base_theme = (st.get_option("theme.base") or "light").lower()
+    if base_theme == "dark":
+        return {
+            "paper_bgcolor": "white",
+            "plot_bgcolor": "white",
+            "font_color": "black",
+            "grid_color": "lightgray",
+            "axis_color": "black",
+            "hover_bg": "white",
+            "hover_font": "black",
+        }
+    return {
+        "paper_bgcolor": "#1f1f1f",
+        "plot_bgcolor": "#1f1f1f",
+        "font_color": "white",
+        "grid_color": "#444444",
+        "axis_color": "white",
+        "hover_bg": "#1f1f1f",
+        "hover_font": "white",
+    }
+
+
+def _apply_plot_theme(fig, theme, font_size=12):
+    fig.update_layout(
+        paper_bgcolor=theme["paper_bgcolor"],
+        plot_bgcolor=theme["plot_bgcolor"],
+        font=dict(color=theme["font_color"], size=font_size),
+        hoverlabel=dict(bgcolor=theme["hover_bg"], font=dict(color=theme["hover_font"])),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+
+
+# =========================
 # CONSTANTES / PATHS
 # =========================
 BASE_DIR = Path(__file__).resolve().parent
@@ -960,51 +1015,16 @@ def render_ejemplo1():
         fig.update_yaxes(title_text="Amplitud", row=3, col=1)
 
         # Layout mejorado
+        plot_theme = _get_plot_theme()
         fig.update_layout(
             height=750,  # <-- MÁS ALTO
             margin=dict(l=40, r=20, t=90, b=60),  # <-- EVITA TRASLAPE
             hovermode="x unified",
             showlegend=False,
-            # ---- FORZAR FONDO BLANCO SIEMPRE ----
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            # ---- TEXTO SIEMPRE LEGIBLE ----
-            font=dict(
-                color="black",
-                size=12
-            ),
-
-            # ---- TITULO HOVER ----
-            hoverlabel=dict(
-                bgcolor="white",
-                font=dict(color="black")
-            ),
-
         )
-        # ---- FORZAR ESTILO DE EJES (independiente del theme) ----
-        fig.update_xaxes(
-            showgrid=True,
-            gridcolor="lightgray",
-            zerolinecolor="black",
-            linecolor="black",
-            ticks="outside",
-            tickcolor="black",
-            tickfont=dict(color="black"),
-            title_font=dict(color="black"),
-        )
-
-        fig.update_yaxes(
-            showgrid=True,
-            gridcolor="lightgray",
-            zerolinecolor="black",
-            linecolor="black",
-            ticks="outside",
-            tickcolor="black",
-            tickfont=dict(color="black"),
-            title_font=dict(color="black"),
-        )
-        # ---- FORZAR COLOR DE TÍTULOS DE SUBGRÁFICAS ----
-        fig.update_annotations(font=dict(color="black", size=13))
+        _apply_plot_theme(fig, plot_theme, font_size=12)
+        # ---- COLOR DE TÍTULOS DE SUBGRÁFICAS ----
+        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
 
         fig.update_xaxes(rangeslider_visible=True, row=3, col=1)
 
@@ -1111,6 +1131,7 @@ def render_ejemplo2():
         y_min_in = float(np.min(X_in_plot))
         y_max_in = float(np.max(X_in_plot))
 
+        plot_theme = _get_plot_theme()
         for f_c, label in [(f1, "f₁"), (f2, "f₂")]:
             if 0 < f_c < freq_plot[-1]:
                 idx = np.argmin(np.abs(freq_plot - f_c))
@@ -1118,9 +1139,9 @@ def render_ejemplo2():
                 fig1.add_annotation(
                     x=freq_plot[idx],
                     y=_label_y(amp, y_min_in, y_max_in),
-                    text=f"<b>{label}</b>",
+                    text=label,
                     showarrow=False,
-                    font=dict(size=11, color="black"),
+                    font=dict(size=11, color=plot_theme["font_color"]),
                     textangle=90,
                 )
 
@@ -1131,9 +1152,9 @@ def render_ejemplo2():
                 fig1.add_annotation(
                     x=freq_plot[idx],
                     y=_label_y(amp, y_min_in, y_max_in),
-                    text=f"<b>{label}</b>",
+                    text=label,
                     showarrow=False,
-                    font=dict(size=11, color="black"),
+                    font=dict(size=11, color=plot_theme["font_color"]),
                     textangle=90,
                 )
 
@@ -1146,8 +1167,8 @@ def render_ejemplo2():
             margin=dict(l=40, r=20, t=50, b=40),
             hovermode="x unified",
         )
+        _apply_plot_theme(fig1, plot_theme, font_size=12)
         fig1.update_xaxes(range=[0, fmax_plot])
-        fig1.update_yaxes(showgrid=True, gridcolor="lightgray")
         st.plotly_chart(fig1, use_container_width=True, theme=None)
 
         # 2) Espectro DESPUÉS de la no linealidad (Plotly interactivo)
@@ -1171,9 +1192,9 @@ def render_ejemplo2():
                 fig2.add_annotation(
                     x=freq_plot[idx],
                     y=_label_y(amp, y_min_out, y_max_out),
-                    text=f"<b>{label}</b>",
+                    text=label,
                     showarrow=False,
-                    font=dict(size=11, color="black"),
+                    font=dict(size=11, color=plot_theme["font_color"]),
                     textangle=90,
                 )
 
@@ -1184,9 +1205,9 @@ def render_ejemplo2():
                 fig2.add_annotation(
                     x=freq_plot[idx],
                     y=_label_y(amp, y_min_out, y_max_out),
-                    text=f"<b>{label}</b>",
+                    text=label,
                     showarrow=False,
-                    font=dict(size=11, color="black"),
+                    font=dict(size=11, color=plot_theme["font_color"]),
                     textangle=90,
                 )
 
@@ -1199,8 +1220,8 @@ def render_ejemplo2():
             margin=dict(l=40, r=20, t=50, b=40),
             hovermode="x unified",
         )
+        _apply_plot_theme(fig2, plot_theme, font_size=12)
         fig2.update_xaxes(range=[0, fmax_plot])
-        fig2.update_yaxes(showgrid=True, gridcolor="lightgray")
         st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         # 3) Canal afectado por intermodulación (antes y después)
@@ -1253,10 +1274,16 @@ def render_ejemplo2():
             height=320,
             margin=dict(l=40, r=20, t=50, b=40),
             hovermode="x unified",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(color=plot_theme["font_color"]),
+            ),
         )
-        fig3.update_xaxes(showgrid=True, gridcolor="lightgray")
-        fig3.update_yaxes(showgrid=True, gridcolor="lightgray")
+        _apply_plot_theme(fig3, plot_theme, font_size=12)
         st.plotly_chart(fig3, use_container_width=True, theme=None)
 
         # --- Explicación y preguntas ---
@@ -1415,6 +1442,7 @@ def render_ejemplo3():
                     name=chanB,
                 )
             )
+            plot_theme = _get_plot_theme()
             fig.update_layout(
                 title="Comparación de canales",
                 xaxis_title="Frecuencia (MHz)",
@@ -1424,8 +1452,7 @@ def render_ejemplo3():
                 margin=dict(l=40, r=20, t=50, b=40),
                 hovermode="x unified",
             )
-            fig.update_xaxes(showgrid=True, gridcolor="lightgray")
-            fig.update_yaxes(showgrid=True, gridcolor="lightgray")
+            _apply_plot_theme(fig, plot_theme, font_size=12)
             st.plotly_chart(fig, use_container_width=True, theme=None)
 
             descA = describe_channel(chanA)
