@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import os
 import io
-import base64
 import datetime as _dt
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List, Optional
@@ -15,6 +14,8 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+
+from github_uploader import upload_file_to_github_results
 
 # SciPy es altamente recomendable para los filtros FIR
 try:
@@ -36,16 +37,6 @@ except Exception:
     letter = None
     inch = None
     _REPORTLAB_OK = False
-
-# GitHub upload (requests)
-try:
-    import requests
-    _REQUESTS_OK = True
-except Exception:
-    requests = None
-    _REQUESTS_OK = False
-
-
 
 # -----------------------------
 # Textos de la guía (basados en GUIA4.docx)
@@ -1713,48 +1704,6 @@ def export_results_pdf_guia4(filename_base: str, student_info: Dict[str, str], r
     return pdf_path
 
 
-def upload_file_to_github(local_path: str, repo_path: str) -> Tuple[bool, str]:
-    """
-    Sube un archivo a GitHub usando la API.
-    Requiere variables de entorno:
-      - GITHUB_TOKEN
-      - GITHUB_USER
-      - GITHUB_REPO
-    """
-    if not _REQUESTS_OK:
-        return False, "requests no disponible"
-
-    token = os.getenv("GITHUB_TOKEN", "")
-    user = os.getenv("GITHUB_USER", "")
-    repo = os.getenv("GITHUB_REPO", "")
-    branch = os.getenv("GITHUB_BRANCH", "main")
-
-    if not token or not user or not repo:
-        return False, "Faltan variables GITHUB_TOKEN / GITHUB_USER / GITHUB_REPO"
-
-    api_url = f"https://api.github.com/repos/{user}/{repo}/contents/{repo_path}"
-
-    with open(local_path, "rb") as f:
-        content = base64.b64encode(f.read()).decode("utf-8")
-
-    headers = {"Authorization": f"token {token}"}
-    # Si existe, necesitamos sha (update). Si no, create.
-    r_get = requests.get(api_url, headers=headers, params={"ref": branch}, timeout=30)
-    sha = None
-    if r_get.status_code == 200:
-        sha = r_get.json().get("sha")
-
-    msg = f"Subir PDF Guía 4 ({os.path.basename(local_path)})"
-    data = {"message": msg, "content": content, "branch": branch}
-    if sha:
-        data["sha"] = sha
-
-    r_put = requests.put(api_url, headers=headers, json=data, timeout=30)
-    if r_put.status_code in (200, 201):
-        return True, "Archivo subido correctamente"
-    return False, f"GitHub error: {r_put.status_code} - {r_put.text[:200]}"
-
-
 def render_dinamicas_guia4():
     _init_guia4_state()
     state = st.session_state.guia4_dinamicas
@@ -1830,12 +1779,20 @@ def render_dinamicas_guia4():
         # Subida a GitHub (si hay credenciales)
         nombre_pdf_repo = os.path.basename(pdf_path)
         repo_path = f"guia4/{nombre_pdf_repo}"
-        ok_up, msg = upload_file_to_github(pdf_path, repo_path)
+        commit_msg = f"Guía 4 - {state['student'].get('id','sin_id')} - {state['student'].get('name','')}".strip()
+        ok_up, info = upload_file_to_github_results(
+            local_path=pdf_path,
+            repo_path=repo_path,
+            commit_message=commit_msg,
+        )
         if ok_up:
             st.success("PDF enviado a GitHub correctamente.")
+            if isinstance(info, dict) and info.get("html_url"):
+                st.link_button("Ver archivo en GitHub", info["html_url"])
             st.write("Ruta en el repositorio:", repo_path)
         else:
-            st.warning("El PDF se generó, pero no se subió a GitHub: " + msg)
+            err_msg = info.get("error") if isinstance(info, dict) else str(info)
+            st.warning("El PDF se generó, pero no se subió a GitHub: " + err_msg)
 
 
 # -----------------------------
