@@ -311,7 +311,7 @@ def render_ejemplo1():
         )
         Nb = st.slider(
             "Número de bits a visualizar",
-            min_value=8, max_value=64,
+            min_value=8, max_value=100000,
             value=20, step=1, key="g5_e1_nb"
         )
 
@@ -651,12 +651,12 @@ def render_ejemplo2():
             marker=dict(size=7)
         ))
         fig.update_yaxes(type="log", title_text="BER (log)")
-        fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
+        fig.update_xaxes(title_text="Eb/N0 (dB)")
 
         try:
-            _plotly_layout(fig, "BPSK en AWGN: BER vs $E_b/N_0$", height=420, showlegend=True)
+            _plotly_layout(fig, "BPSK en AWGN: BER vs Eb/N0", height=420, showlegend=True)
         except Exception:
-            fig.update_layout(title="BPSK en AWGN: BER vs $E_b/N_0$")
+            fig.update_layout(title="BPSK en AWGN: BER vs Eb/N0")
 
         _force_plotly_readable_local(fig, height=420)
         st.plotly_chart(fig, use_container_width=True)
@@ -688,10 +688,10 @@ def render_ejemplo2():
             figH.update_yaxes(title_text="Frecuencia relativa")
 
             try:
-                _plotly_layout(figH, f"Histogramas (BPSK) para $E_b/N_0$={float(punto_hist):.1f} dB",
+                _plotly_layout(figH, f"Histogramas (BPSK) para Eb/N0={float(punto_hist):.1f} dB",
                               height=380, showlegend=True)
             except Exception:
-                figH.update_layout(title=f"Histogramas (BPSK) para $E_b/N_0$={float(punto_hist):.1f} dB")
+                figH.update_layout(title=f"Histogramas (BPSK) para Eb/N0={float(punto_hist):.1f} dB")
 
             _force_plotly_readable_local(figH, height=380)
             st.plotly_chart(figH, use_container_width=True)
@@ -759,6 +759,14 @@ def render_ejemplo3():
                              value=12.0, step=1.0, key="g5_e3_max")
         step_db = st.select_slider("Paso (dB)", options=[0.5, 1.0, 2.0], value=1.0, key="g5_e3_step")
 
+        punto_hist = st.slider(
+            "Punto para histogramas (dB)",
+            min_value=float(ebn0_min), max_value=float(ebn0_max),
+            value=6.0, step=float(step_db),
+            key="g5_e3_hist_pt"
+        )
+        ver_hist = st.checkbox("Mostrar histogramas de decisión", value=True, key="g5_e3_show_hist")
+
         if st.button("Simular", key="g5_e3_btn"):
             st.session_state.g5_e3_seed = int(np.random.randint(0, 2**31 - 1))
             st.session_state.g5_e3_run = True
@@ -780,6 +788,7 @@ def render_ejemplo3():
     EbN0_lin = 10 ** (ebn0_dB / 10.0)
 
     ber_th_bfsk = ber_teorica_bfsk(EbN0_lin, float(fd), Tb)
+    ber_th_bpsk = ber_teorica_bpsk(EbN0_lin)
 
     u0 = np.array([1.0, 0.0])
     u1 = np.array([rho_clip, math.sqrt(max(0.0, 1.0 - rho_clip**2))])
@@ -803,6 +812,10 @@ def render_ejemplo3():
     with col2:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
+            x=ebn0_dB, y=ber_th_bpsk, mode="lines",
+            name="BPSK teórica", line=dict(color="#2ca02c", width=3, dash="dash")
+        ))
+        fig.add_trace(go.Scatter(
             x=ebn0_dB, y=ber_th_bfsk, mode="lines",
             name="BFSK teórica", line=dict(color="#1f77b4", width=3)
         ))
@@ -813,11 +826,44 @@ def render_ejemplo3():
         ))
 
         fig.update_yaxes(type="log", title_text="BER (log)")
-        fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
+        fig.update_xaxes(title_text="Eb/N0 (dB)")
 
-        _plotly_layout(fig, "BFSK : BER vs $E_b/N_0$", height=440, showlegend=True)
+        _plotly_layout(fig, "BFSK en AWGN: BER vs Eb/N0", height=440, showlegend=True)
         _force_plotly_readable(fig, height=440)
         st.plotly_chart(fig, use_container_width=True)
+
+        if ver_hist:
+            g = 10 ** (float(punto_hist) / 10.0)
+            N0 = Eb / g
+            sigma = math.sqrt(N0 / 2.0)
+            Nh = 20000
+
+            bh = rng.integers(0, 2, size=Nh)
+            n = rng.normal(0.0, sigma, size=(Nh, 2))
+            s = np.where(bh[:, None] == 1, s1, s0)
+            r = s + n
+            z0 = r @ u0
+            z1 = r @ u1
+            decision = z1 - z0
+
+            d0 = decision[bh == 0]
+            d1 = decision[bh == 1]
+
+            figH = go.Figure()
+            figH.add_trace(go.Histogram(x=d0, nbinsx=60, name="z1 - z0 | bit 0", opacity=0.55, marker_color="#1f77b4"))
+            figH.add_trace(go.Histogram(x=d1, nbinsx=60, name="z1 - z0 | bit 1", opacity=0.55, marker_color="#ff7f0e"))
+            figH.add_vline(x=0.0, line_width=3, line_dash="dash", line_color="black")
+            figH.update_xaxes(title_text="Estadístico (z1 - z0)")
+            figH.update_yaxes(title_text="Frecuencia relativa")
+
+            try:
+                _plotly_layout(figH, f"Histogramas (BFSK) para Eb/N0={float(punto_hist):.1f} dB",
+                              height=380, showlegend=True)
+            except Exception:
+                figH.update_layout(title=f"Histogramas (BFSK) para Eb/N0={float(punto_hist):.1f} dB")
+
+            _force_plotly_readable(figH, height=380)
+            st.plotly_chart(figH, use_container_width=True)
 
     st.markdown("##### Explicación de la simulación")
     st.markdown("Para **BFSK** la **BEP** está dada por la ecuación:")
