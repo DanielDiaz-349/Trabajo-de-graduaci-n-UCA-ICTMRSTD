@@ -1078,17 +1078,6 @@ def render_ejemplo2():
 
         fmax_plot = max(f1, f2) * 4.0  # rango básico suficiente para ver IM3 en la mayoría de casos
 
-        # 1) Espectro ANTES de la no linealidad
-        fig1, ax1 = plt.subplots(figsize=(7, 3))
-        ax1.semilogy(freq, X_in + 1e-12)
-        ax1.set_xlim(0, fmax_plot)
-        ax1.set_xlabel("Frecuencia (Hz)")
-        ax1.set_ylabel("Magnitud (u.a.)")
-        ax1.set_title("Espectro antes de la no linealidad")
-        ax1.grid(True, linestyle=":")
-        fig1.tight_layout(pad=2.0)
-        st.pyplot(fig1)
-
         # --- Frecuencias de IMD de tercer orden ---
         imd_freqs = {
             "2f₁−f₂": 2 * f1 - f2,
@@ -1099,49 +1088,120 @@ def render_ejemplo2():
             "2f₂+f₁": 2 * f2 + f1,
         }
 
-        # 2) Espectro DESPUÉS de la no linealidad con etiquetas (sin puntos rojos/naranjas)
-        fig2, ax2 = plt.subplots(figsize=(7, 3))
-        ax2.semilogy(freq, X_out + 1e-12)
-        ax2.set_xlim(0, fmax_plot)
-        ax2.set_xlabel("Frecuencia (Hz)")
-        ax2.set_ylabel("Magnitud (u.a.)")
-        ax2.set_title("Espectro después de la no linealidad ")
-        ax2.grid(True, linestyle=":")
+        def _label_y(value, y_min, y_max):
+            proposed = value * 1.6
+            return min(max(proposed, y_min * 1.2), y_max * 0.9)
 
-        # Etiquetar portadoras originales f1 y f2 (solo texto)
+        mask = freq <= fmax_plot
+        freq_plot = freq[mask]
+        X_in_plot = X_in[mask] + 1e-12
+        X_out_plot = X_out[mask] + 1e-12
+
+        # 1) Espectro ANTES de la no linealidad (Plotly interactivo)
+        fig1 = go.Figure()
+        fig1.add_trace(
+            go.Scatter(
+                x=freq_plot,
+                y=X_in_plot,
+                mode="lines",
+                name="Entrada",
+                line=dict(color="blue"),
+            )
+        )
+        y_min_in = float(np.min(X_in_plot))
+        y_max_in = float(np.max(X_in_plot))
+
         for f_c, label in [(f1, "f₁"), (f2, "f₂")]:
-            if 0 < f_c < freq[-1]:
-                idx = np.argmin(np.abs(freq - f_c))
-                amp = X_out[idx] + 1e-12
-                ax2.text(
-                    freq[idx],
-                    amp * 1.3,   # un poco arriba de la línea, sin irse al título
-                    label,
-                    ha="center",
-                    va="bottom",
-                    fontsize=7,
-                    rotation=90,
-                    color="black"
+            if 0 < f_c < freq_plot[-1]:
+                idx = np.argmin(np.abs(freq_plot - f_c))
+                amp = X_in_plot[idx]
+                fig1.add_annotation(
+                    x=freq_plot[idx],
+                    y=_label_y(amp, y_min_in, y_max_in),
+                    text=f"<b>{label}</b>",
+                    showarrow=False,
+                    font=dict(size=11, color="black"),
+                    textangle=90,
                 )
 
-        # Etiquetar productos de IMD de tercer orden (solo texto, sin puntos)
         for label, f_imd in imd_freqs.items():
-            if 0 < f_imd < freq[-1]:
-                idx = np.argmin(np.abs(freq - f_imd))
-                amp = X_out[idx] + 1e-12
-                ax2.text(
-                    freq[idx],
-                    amp * 1.3,
-                    label,
-                    ha="center",
-                    va="bottom",
-                    fontsize=7,
-                    rotation=90,
-                    color="black"
+            if 0 < f_imd < freq_plot[-1]:
+                idx = np.argmin(np.abs(freq_plot - f_imd))
+                amp = X_in_plot[idx]
+                fig1.add_annotation(
+                    x=freq_plot[idx],
+                    y=_label_y(amp, y_min_in, y_max_in),
+                    text=f"<b>{label}</b>",
+                    showarrow=False,
+                    font=dict(size=11, color="black"),
+                    textangle=90,
                 )
 
-        fig2.tight_layout(pad=2.0)
-        st.pyplot(fig2)
+        fig1.update_layout(
+            title="Espectro antes de la no linealidad",
+            xaxis_title="Frecuencia (Hz)",
+            yaxis_title="Magnitud (u.a.)",
+            yaxis_type="log",
+            height=320,
+            margin=dict(l=40, r=20, t=50, b=40),
+            hovermode="x unified",
+        )
+        fig1.update_xaxes(range=[0, fmax_plot])
+        fig1.update_yaxes(showgrid=True, gridcolor="lightgray")
+        st.plotly_chart(fig1, use_container_width=True, theme=None)
+
+        # 2) Espectro DESPUÉS de la no linealidad (Plotly interactivo)
+        fig2 = go.Figure()
+        fig2.add_trace(
+            go.Scatter(
+                x=freq_plot,
+                y=X_out_plot,
+                mode="lines",
+                name="Salida",
+                line=dict(color="blue"),
+            )
+        )
+        y_min_out = float(np.min(X_out_plot))
+        y_max_out = float(np.max(X_out_plot))
+
+        for f_c, label in [(f1, "f₁"), (f2, "f₂")]:
+            if 0 < f_c < freq_plot[-1]:
+                idx = np.argmin(np.abs(freq_plot - f_c))
+                amp = X_out_plot[idx]
+                fig2.add_annotation(
+                    x=freq_plot[idx],
+                    y=_label_y(amp, y_min_out, y_max_out),
+                    text=f"<b>{label}</b>",
+                    showarrow=False,
+                    font=dict(size=11, color="black"),
+                    textangle=90,
+                )
+
+        for label, f_imd in imd_freqs.items():
+            if 0 < f_imd < freq_plot[-1]:
+                idx = np.argmin(np.abs(freq_plot - f_imd))
+                amp = X_out_plot[idx]
+                fig2.add_annotation(
+                    x=freq_plot[idx],
+                    y=_label_y(amp, y_min_out, y_max_out),
+                    text=f"<b>{label}</b>",
+                    showarrow=False,
+                    font=dict(size=11, color="black"),
+                    textangle=90,
+                )
+
+        fig2.update_layout(
+            title="Espectro después de la no linealidad",
+            xaxis_title="Frecuencia (Hz)",
+            yaxis_title="Magnitud (u.a.)",
+            yaxis_type="log",
+            height=320,
+            margin=dict(l=40, r=20, t=50, b=40),
+            hovermode="x unified",
+        )
+        fig2.update_xaxes(range=[0, fmax_plot])
+        fig2.update_yaxes(showgrid=True, gridcolor="lightgray")
+        st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         # 3) Canal afectado por intermodulación (antes y después)
         # Elegimos como "frecuencia de canal" uno de los productos IMD (por ejemplo 2f₁−f₂)
@@ -1167,45 +1227,63 @@ def render_ejemplo2():
         y_clean_win = canal_limpio[:N_win]
         y_dist_win = canal_afectado[:N_win]
 
-        fig3, ax3 = plt.subplots(figsize=(7, 3))
-        ax3.plot(t_win, y_clean_win, label="Canal adyacente antes de la intermodulación")
-        ax3.plot(t_win, y_dist_win, label="Canal adyacente después de la intermodulación", alpha=0.8)
-        ax3.set_xlabel("Tiempo (s)")
-        ax3.set_ylabel("Amplitud")
-        ax3.set_title("Señal de un canal afectado por productos de intermodulación")
-        ax3.grid(True, linestyle=":")
-        ax3.legend(loc="upper right", fontsize=8)
-        fig3.tight_layout(pad=2.0)
-        st.pyplot(fig3)
+        fig3 = go.Figure()
+        fig3.add_trace(
+            go.Scatter(
+                x=t_win,
+                y=y_clean_win,
+                mode="lines",
+                name="Canal adyacente antes de la intermodulación",
+                line=dict(color="blue"),
+            )
+        )
+        fig3.add_trace(
+            go.Scatter(
+                x=t_win,
+                y=y_dist_win,
+                mode="lines",
+                name="Canal adyacente después de la intermodulación",
+                line=dict(color="orange"),
+            )
+        )
+        fig3.update_layout(
+            title="Señal de un canal afectado por productos de intermodulación",
+            xaxis_title="Tiempo (s)",
+            yaxis_title="Amplitud",
+            height=320,
+            margin=dict(l=40, r=20, t=50, b=40),
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        )
+        fig3.update_xaxes(showgrid=True, gridcolor="lightgray")
+        fig3.update_yaxes(showgrid=True, gridcolor="lightgray")
+        st.plotly_chart(fig3, use_container_width=True, theme=None)
 
         # --- Explicación y preguntas ---
-        st.markdown("#### Explicación de la simulación y preguntas")
+        with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
+            st.markdown(
+                "En la entrada, el espectro muestra solo dos líneas espectrales principales en f1 y f2. "
+                "Tras pasar por el dispositivo no lineal cúbico, aparecen nuevos componentes de frecuencia "
+                "asociados a productos de intermodulación de tercer orden.\n"
+            )
 
-        st.markdown(
-            "En la entrada, el espectro muestra solo dos líneas espectrales principales en f1 y f2. "
-            "Tras pasar por el dispositivo no lineal cúbico, aparecen nuevos componentes de frecuencia "
-            "asociados a productos de intermodulación de tercer orden.\n"
-        )
-
-        st.markdown(
-            "**Preguntas y respuestas:**\n\n"
-            "1. **¿Por qué aparecen nuevas líneas espectrales además de f1 y f2?**  \n"
-            "   **R:** Porque la no linealidad mezcla las señales de entrada, generando sumas y diferencias "
-            "de frecuencias (productos de intermodulación) además de armónicos.\n\n"
-            "2. **¿Por qué los productos 2f1 - f2 y 2f2 - f1 suelen ser críticos en sistemas multicanal?**  \n"
-            "   **R:** Porque pueden caer muy cerca de las portadoras útiles o dentro de canales adyacentes, "
-            "provocando interferencia entre servicios que comparten el mismo medio de transmisión.\n\n"
-            "3. **¿Qué representa la distorsión observada en la tercera gráfica?**  \n"
-            "   **R:** Representa un canal que inicialmente transportaba una señal sinusoidal limpia. "
-            "Cuando productos de intermodulación caen en esa banda, se suman a la señal útil y "
-            "modifican su forma en el tiempo, introduciendo distorsión y degradando la calidad.\n\n"
-            "4. **¿Qué efecto tiene aumentar k3 sobre los productos de intermodulación?**  \n"
-            "**R**: A medida que aumenta k3, la contribución cúbica es mayor y los productos de intermodulación incrementan su amplitud, lo que empeora la calidad de la señal y la coexistencia de múltiples canales.\n\n"
-            "5. **¿Por qué las magnitudes de los productos de intermodulación son menores a comparación de las magnitudes originales?**  \n"
-            "**R**: La menor magnitud de los productos de intermodulación se debe a que estos surgen de términos no lineales de orden superior en el modelo del dispositivo. En particular, los productos IM3 están ponderados por el coeficiente de no linealidad y por potencias de las amplitudes de las señales de entrada, lo que hace que su energía sea significativamente menor que la de las componentes fundamentales. Este comportamiento es consistente con el funcionamiento real de amplificadores en la región cuasi-lineal, donde la intermodulación existe pero se mantiene limitada."
-
-
-        )
+            st.markdown(
+                "**Preguntas y respuestas:**\n\n"
+                "1. **¿Por qué aparecen nuevas líneas espectrales además de f1 y f2?**  \n"
+                "   **R:** Porque la no linealidad mezcla las señales de entrada, generando sumas y diferencias "
+                "de frecuencias (productos de intermodulación) además de armónicos.\n\n"
+                "2. **¿Por qué los productos 2f1 - f2 y 2f2 - f1 suelen ser críticos en sistemas multicanal?**  \n"
+                "   **R:** Porque pueden caer muy cerca de las portadoras útiles o dentro de canales adyacentes, "
+                "provocando interferencia entre servicios que comparten el mismo medio de transmisión.\n\n"
+                "3. **¿Qué representa la distorsión observada en la tercera gráfica?**  \n"
+                "   **R:** Representa un canal que inicialmente transportaba una señal sinusoidal limpia. "
+                "Cuando productos de intermodulación caen en esa banda, se suman a la señal útil y "
+                "modifican su forma en el tiempo, introduciendo distorsión y degradando la calidad.\n\n"
+                "4. **¿Qué efecto tiene aumentar k3 sobre los productos de intermodulación?**  \n"
+                "**R**: A medida que aumenta k3, la contribución cúbica es mayor y los productos de intermodulación incrementan su amplitud, lo que empeora la calidad de la señal y la coexistencia de múltiples canales.\n\n"
+                "5. **¿Por qué las magnitudes de los productos de intermodulación son menores a comparación de las magnitudes originales?**  \n"
+                "**R**: La menor magnitud de los productos de intermodulación se debe a que estos surgen de términos no lineales de orden superior en el modelo del dispositivo. En particular, los productos IM3 están ponderados por el coeficiente de no linealidad y por potencias de las amplitudes de las señales de entrada, lo que hace que su energía sea significativamente menor que la de las componentes fundamentales. Este comportamiento es consistente con el funcionamiento real de amplificadores en la región cuasi-lineal, donde la intermodulación existe pero se mantiene limitada."
+            )
 
 
 
@@ -1320,15 +1398,35 @@ def render_ejemplo3():
         yB = channel_attenuation_curve(chanB, freqs_Hz, distance_m=dist_m)
 
         with col2:
-            fig, ax = plt.subplots(figsize=(7, 5))
-            ax.semilogx(freqs_MHz, yA, label=chanA)
-            ax.semilogx(freqs_MHz, yB, label=chanB)
-            ax.set_xlabel("Frecuencia (MHz)")
-            ax.set_ylabel(f"Atenuación (dB) (distancia = {dist_m} m)")
-            ax.set_title("Comparación de canales")
-            ax.legend()
-            ax.grid(True, which="both", linestyle=":", alpha=0.5)
-            st.pyplot(fig)
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=freqs_MHz,
+                    y=yA,
+                    mode="lines",
+                    name=chanA,
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=freqs_MHz,
+                    y=yB,
+                    mode="lines",
+                    name=chanB,
+                )
+            )
+            fig.update_layout(
+                title="Comparación de canales",
+                xaxis_title="Frecuencia (MHz)",
+                yaxis_title=f"Atenuación (dB) (distancia = {dist_m} m)",
+                xaxis_type="log",
+                height=420,
+                margin=dict(l=40, r=20, t=50, b=40),
+                hovermode="x unified",
+            )
+            fig.update_xaxes(showgrid=True, gridcolor="lightgray")
+            fig.update_yaxes(showgrid=True, gridcolor="lightgray")
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
             descA = describe_channel(chanA)
             descB = describe_channel(chanB)
