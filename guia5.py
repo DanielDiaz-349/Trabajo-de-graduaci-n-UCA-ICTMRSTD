@@ -288,7 +288,8 @@ def render_ejemplo1():
             "1) **Dato binario enviado** $b[k]$\n"
             "2) **Señal analógica modulada** $s(t)$ (BPSK pasabanda)\n"
             "3) **Señal en el canal** $r(t)=s(t)+w(t)$\n"
-            "4) **Dato demodulado** $\\hat{b}[k]$ mediante un detector \n\n"
+            "4) **Salida del filtro adaptado** (matched filter)\n"
+            "5) **Dato demodulado** $\\hat{b}[k]$ mediante un detector \n\n"
             "**Pasos sugeridos**\n"
             "1. Ajusta $E_b/N_0$ y el número de bits.\n"
             "2. Pulsa **Simular**.\n"
@@ -356,11 +357,15 @@ def render_ejemplo1():
     w = rng.normal(0.0, sigma_w, size=N)
     r = s + w
 
+    mixed = r * carrier
+    mf_kernel = np.ones(Ns) * dt
+    matched = np.convolve(mixed, mf_kernel, mode="same")
+
     yk = np.zeros(Nb, dtype=float)
     for k in range(Nb):
         i0 = k * Ns
         i1 = (k + 1) * Ns
-        yk[k] = np.sum(r[i0:i1] * carrier[i0:i1]) * dt
+        yk[k] = np.sum(mixed[i0:i1]) * dt
 
     b_hat = (yk > 0).astype(int)
     b_hat_samp = np.repeat(b_hat, Ns)
@@ -369,12 +374,13 @@ def render_ejemplo1():
     ber_hat = n_err / Nb
 
     fig = make_subplots(
-        rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.08,
+        rows=5, cols=1, shared_xaxes=True, vertical_spacing=0.08,
         subplot_titles=(
             "1) Dato binario enviado b[k]",
             "2) Señal analógica modulada s(t) (BPSK pasabanda)",
             "3) Señal en el canal con AWGN: r(t)=s(t)+w(t)",
-            "4) Dato demodulado (decisión) ŷ → b̂[k]"
+            "4) Salida del filtro adaptado (matched filter)",
+            "5) Dato demodulado (decisión) ŷ → b̂[k]"
         )
     )
 
@@ -408,17 +414,26 @@ def render_ejemplo1():
 
     fig.add_trace(
         go.Scatter(
+            x=t, y=matched, mode="lines",
+            name="Salida filtro adaptado", line=dict(width=2, color="#ff7f0e")
+        ),
+        row=4, col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(
             x=t, y=b_hat_samp, mode="lines",
             name="b̂[k]", line=dict(width=2, color="#9467bd"), line_shape="hv"
         ),
-        row=4, col=1
+        row=5, col=1
     )
 
     fig.update_yaxes(title_text="Bit", row=1, col=1, range=[-0.2, 1.2])
     fig.update_yaxes(title_text="Amplitud", row=2, col=1)
     fig.update_yaxes(title_text="Amplitud", row=3, col=1)
-    fig.update_yaxes(title_text="Bit", row=4, col=1, range=[-0.2, 1.2])
-    fig.update_xaxes(title_text="Tiempo (s)", row=4, col=1)
+    fig.update_yaxes(title_text="Amplitud", row=4, col=1)
+    fig.update_yaxes(title_text="Bit", row=5, col=1, range=[-0.2, 1.2])
+    fig.update_xaxes(title_text="Tiempo (s)", row=5, col=1)
 
     if getattr(fig.layout, "annotations", None):
         for ann in fig.layout.annotations:
@@ -428,7 +443,7 @@ def render_ejemplo1():
     fig.update_layout(
         template="plotly_white",
         title="Cadena digital: bits → modulación → AWGN → decisión",
-        height=900,
+        height=1120,
         paper_bgcolor="white",
         plot_bgcolor="white",
         font=dict(color="black", size=14),
@@ -499,7 +514,8 @@ def render_ejemplo1():
     st.markdown(
         "- En la gráfica (2), la señal **modulada es analógica** porque es una **onda continua** (portadora) cuya fase cambia según el bit.\n"
         "- En la gráfica (3), el canal agrega **ruido AWGN**: al bajar $E_b/N_0$ el ruido domina y la señal se distorsiona más.\n"
-        "- En la gráfica (4), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
+        "- En la gráfica (4) se observa la **salida del filtro adaptado (matched filter)**, que maximiza la SNR antes de muestrear.\n"
+        "- En la gráfica (5), el receptor usa un **correlador** (equivalente al filtro igualado) y decide por el **signo** del estadístico: "
         "si $y_k>0$ decide 1, si $y_k<0$ decide 0.\n"
         "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
         )
