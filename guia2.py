@@ -1,155 +1,3 @@
-
-from io import BytesIO
-import os
-import re
-import datetime
-
-# =========================
-# ReportLab (PDF) availability
-# =========================
-try:
-    from reportlab.pdfgen import canvas as rcanvas
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.utils import ImageReader
-    REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
-
-def _safe_str(x) -> str:
-    return "" if x is None else str(x)
-
-def _sanitize_filename(s: str) -> str:
-    # keep it filesystem/git friendly
-    s = re.sub(r"\s+", "_", _safe_str(s).strip())
-    s = re.sub(r"[^A-Za-z0-9_\-]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s or "NA"
-
-def _ensure_unicode_font() -> str:
-    """Register a Unicode-capable font for Spanish accents if available."""
-    if not REPORTLAB_AVAILABLE:
-        return "Helvetica"
-    try:
-        font_name = "DejaVuSans"
-        # common linux path on Streamlit Cloud
-        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-        if os.path.exists(font_path):
-            try:
-                pdfmetrics.registerFont(TTFont(font_name, font_path))
-            except Exception:
-                pass
-            return font_name
-    except Exception:
-        pass
-    return "Helvetica"
-
-def export_results_pdf_guia2_bytes(student_info: dict, resultados: list, logo_path: str = None):
-    """Genera un PDF en memoria (bytes) con los resultados de Guía 2."""
-    if not REPORTLAB_AVAILABLE:
-        raise RuntimeError("ReportLab no está disponible. Agrega 'reportlab' a requirements.txt")
-
-    base_font = _ensure_unicode_font()
-
-    registro = _sanitize_filename(_safe_str(student_info.get("id", student_info.get("registro", ""))))
-    nombre = _sanitize_filename(_safe_str(student_info.get("name", student_info.get("nombre", ""))))
-    ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    pdf_filename = f"guia2_{registro}_{nombre}_{ts}.pdf"
-
-    buf = BytesIO()
-    c = rcanvas.Canvas(buf, pagesize=letter)
-    width, height = letter
-
-    def _new_page():
-        c.showPage()
-        c.setFont(base_font, 11)
-
-    # Header
-    y = height - 50
-    c.setFont(base_font, 16)
-    c.drawString(50, y, "Guía 2 - Resultados de dinámicas")
-    y -= 22
-
-    # Logo (optional)
-    if logo_path:
-        try:
-            img = ImageReader(logo_path)
-            c.drawImage(img, width - 140, height - 85, width=80, height=80, mask="auto")
-        except Exception:
-            pass
-
-    c.setFont(base_font, 11)
-    c.drawString(50, y, f"Nombre: {_safe_str(student_info.get('name', student_info.get('nombre', '')))}"); y -= 16
-    c.drawString(50, y, f"Registro: {_safe_str(student_info.get('id', student_info.get('registro', '')))}"); y -= 16
-    if student_info.get("dob"):
-        c.drawString(50, y, f"Fecha de nacimiento: {_safe_str(student_info.get('dob'))}"); y -= 16
-    c.drawString(50, y, f"Fecha de envío: {ts.replace('_', ' ')}"); y -= 18
-
-    # Nota global
-    try:
-        scores = [float(r.get("score", 0.0)) for r in resultados]
-        nota_global = round(sum(scores) / max(len(scores), 1), 2)
-    except Exception:
-        nota_global = ""
-    c.setFont(base_font, 12)
-    c.drawString(50, y, f"Nota global (promedio): {nota_global} / 10"); y -= 18
-    c.setFont(base_font, 11)
-    c.line(50, y, width - 50, y); y -= 16
-
-    # Results per dinámica
-    for r in resultados:
-        dyn_id = r.get("dyn_id", "")
-        title = r.get("title") or (r.get("key", {}) or {}).get("descripcion") or (f"Dinámica {dyn_id}" if dyn_id else "Dinámica")
-        title = _safe_str(title)
-        total = len(r.get("correct", {}) or {})
-        correct_count = r.get("correct_count")
-        if correct_count is None:
-            try:
-                correct_count = sum(1 for k, v in (r.get("correct", {}) or {}).items() if (r.get("answers", {}) or {}).get(k) == v)
-            except Exception:
-                correct_count = ""
-        score = r.get("score", "")
-        key = r.get("key", {}) or {}
-        answers = r.get("answers", {}) or {}
-        correct = r.get("correct", {}) or {}
-
-        if y < 120:
-            _new_page()
-            y = height - 60
-
-        c.setFont(base_font, 12)
-        c.drawString(50, y, f"{title}"); y -= 16
-        c.setFont(base_font, 11)
-        c.drawString(60, y, f"Aciertos: {correct_count}/{total}    Nota: {score}/10"); y -= 14
-
-        # Clave / parámetros
-        if key:
-            key_items = ", ".join([f"{k}: {_safe_str(v)}" for k, v in key.items()])
-            c.drawString(60, y, f"Parámetros: {key_items[:110]}"); y -= 14
-            if len(key_items) > 110:
-                c.drawString(60, y, key_items[110:220]); y -= 14
-
-        # Preguntas
-        for qk in sorted(correct.keys()):
-            a = _safe_str(answers.get(qk, ""))
-            corr = _safe_str(correct.get(qk, ""))
-            line = f"{qk.upper()}: respuesta = {a}   |   correcta = {corr}"
-            if y < 80:
-                _new_page()
-                y = height - 60
-            c.drawString(70, y, line[:120]); y -= 14
-            if len(line) > 120:
-                c.drawString(70, y, line[120:240]); y -= 14
-
-        y -= 8
-        c.line(50, y, width - 50, y); y -= 16
-
-    c.save()
-    pdf_bytes = buf.getvalue()
-    buf.close()
-    return pdf_bytes, pdf_filename
-
 # guia2.py
 # -*- coding: utf-8 -*-
 """
@@ -168,6 +16,15 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from pathlib import Path
 from github_uploader import upload_bytes_to_github_results
+
+# Disponibilidad de ReportLab (PDF)
+try:
+    import reportlab  # noqa: F401
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
+
+
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_UCA_PATH = str(BASE_DIR / "assets" / "logo_uca.png")
@@ -201,8 +58,10 @@ def export_results_pdf_txt(filename_base, student_info, dyn_id, key, answers, sc
         f.write(f"\n\nNota (oculta al alumno): {score}\n")
 
     # --- PDF con logo UCA + tema ---
+    pdf_path = None
     if REPORTLAB_AVAILABLE:
-        c = rcanvas.Canvas(repo_path, pagesize=letter)
+        pdf_path = os.path.join(RESULTS_DIR, base + ".pdf")
+        c = rcanvas.Canvas(pdf_path, pagesize=letter)
         width, height = letter
         left = 40
         top = height - 40
@@ -288,7 +147,7 @@ def export_results_pdf_txt(filename_base, student_info, dyn_id, key, answers, sc
 
         c.save()
 
-    return txt_path, repo_path
+    return txt_path, pdf_path
 
 def export_results_pdf_guia2(filename_base, student_info, resultados):
     """
@@ -297,11 +156,12 @@ def export_results_pdf_guia2(filename_base, student_info, resultados):
     """
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     base = f"{filename_base}_{ts}"
+    pdf_path = os.path.join(RESULTS_DIR, base + ".pdf")
 
     if not REPORTLAB_AVAILABLE:
-        return repo_path  # no se puede generar, devolvemos ruta prevista
+        return pdf_path  # no se puede generar, devolvemos ruta prevista
 
-    c = rcanvas.Canvas(repo_path, pagesize=letter)
+    c = rcanvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
     left = 40
     top = height - 40
@@ -411,7 +271,7 @@ def export_results_pdf_guia2(filename_base, student_info, resultados):
     c.drawCentredString(width / 2.0, 30, TEMA_TG)
 
     c.save()
-    return repo_path
+    return pdf_path
 
 # =========================================================
 # Textos estáticos
@@ -605,6 +465,153 @@ CONCLUSIONES2_TEXT = """
 # =========================================================
 # Utilidades internas
 # =========================================================
+
+
+# =========================
+# PDF (en memoria) para envío a GitHub - Guía 2
+# =========================
+def _g2_safe_str(x):
+    return "" if x is None else str(x)
+
+def _g2_sanitize_filename(s: str) -> str:
+    s = re.sub(r"\s+", "_", (s or "").strip())
+    # Solo caracteres seguros para nombre de archivo
+    s = re.sub(r"[^A-Za-z0-9_\-]", "", s)
+    return s[:80] if len(s) > 80 else s
+
+def _g2_ensure_unicode_font():
+    """Registra una fuente Unicode (DejaVuSans) si está disponible, y devuelve el nombre de fuente."""
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        # Evitar registrar dos veces
+        if "DejaVuSans" in pdfmetrics.getRegisteredFontNames():
+            return "DejaVuSans"
+        # Rutas típicas (Linux / Streamlit Cloud)
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        ]
+        for p in candidates:
+            if os.path.exists(p):
+                pdfmetrics.registerFont(TTFont("DejaVuSans", p))
+                return "DejaVuSans"
+    except Exception:
+        pass
+    return "Helvetica"
+
+def export_results_pdf_guia2_bytes(student_info: dict, resultados: list, nota_global: float, logo_path: str = None):
+    """Genera un PDF en memoria (bytes) con los resultados de Guía 2."""
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ReportLab no está disponible. Agrega 'reportlab' a requirements.txt")
+
+    import datetime
+    from io import BytesIO
+    from reportlab.pdfgen import canvas as rcanvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+
+    base_font = _g2_ensure_unicode_font()
+
+    # Nombre de archivo (en repo) con timestamp para evitar colisiones
+    registro = _g2_sanitize_filename(_g2_safe_str(student_info.get("id") or student_info.get("registro") or ""))
+    nombre = _g2_sanitize_filename(_g2_safe_str(student_info.get("name") or student_info.get("nombre") or ""))
+    ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    pdf_filename = f"guia2_{registro}_{nombre}_{ts}.pdf"
+
+    buf = BytesIO()
+    c = rcanvas.Canvas(buf, pagesize=letter)
+    width, height = letter
+
+    # Encabezado
+    y = height - 50
+    c.setFont(base_font, 16)
+    c.drawString(50, y, "Guía 2 - Resultados de dinámicas")
+    y -= 22
+
+    # Logo (opcional)
+    if logo_path:
+        try:
+            img = ImageReader(logo_path)
+            c.drawImage(img, width - 140, height - 85, width=80, height=80, mask="auto")
+        except Exception:
+            pass
+
+    c.setFont(base_font, 11)
+    c.drawString(50, y, f"Nombre: {_g2_safe_str(student_info.get('name') or student_info.get('nombre') or '')}")
+    y -= 16
+    c.drawString(50, y, f"Registro: {_g2_safe_str(student_info.get('id') or student_info.get('registro') or '')}")
+    y -= 16
+    dob = _g2_safe_str(student_info.get("dob") or "")
+    if dob:
+        c.drawString(50, y, f"Fecha de nacimiento: {dob}")
+        y -= 16
+    c.drawString(50, y, f"Fecha: {ts.replace('_', ' ')}")
+    y -= 22
+
+    # Nota global
+    c.setFont(base_font, 12)
+    c.drawString(50, y, f"Nota global: {nota_global}/10")
+    y -= 18
+
+    # Contenido por dinámica
+    c.setFont(base_font, 11)
+    for res in resultados:
+        if y < 120:
+            c.showPage()
+            y = height - 60
+            c.setFont(base_font, 11)
+
+        titulo = _g2_safe_str(res.get("titulo", "Dinámica"))
+        correctas = _g2_safe_str(res.get("correctas", ""))
+        total = _g2_safe_str(res.get("total", ""))
+        nota = _g2_safe_str(res.get("nota", ""))
+
+        c.setFont(base_font, 12)
+        c.drawString(50, y, titulo)
+        y -= 16
+        c.setFont(base_font, 11)
+        c.drawString(60, y, f"Correctas: {correctas}/{total}    Nota: {nota}/10")
+        y -= 14
+
+        # Parámetros / clave
+        key = res.get("key") or {}
+        if key:
+            c.drawString(60, y, "Parámetros:")
+            y -= 14
+            for k, v in key.items():
+                if y < 90:
+                    c.showPage()
+                    y = height - 60
+                    c.setFont(base_font, 11)
+                c.drawString(75, y, f"- {k}: {_g2_safe_str(v)}")
+                y -= 12
+
+        # Respuestas
+        answers = res.get("answers") or {}
+        if answers:
+            if y < 110:
+                c.showPage()
+                y = height - 60
+                c.setFont(base_font, 11)
+            c.drawString(60, y, "Respuestas del estudiante:")
+            y -= 14
+            for k, v in answers.items():
+                if y < 90:
+                    c.showPage()
+                    y = height - 60
+                    c.setFont(base_font, 11)
+                c.drawString(75, y, f"- {k}: {_g2_safe_str(v)}")
+                y -= 12
+
+        y -= 10
+
+    c.showPage()
+    c.save()
+
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    return pdf_bytes, pdf_filename
 
 def _nyquist_info(f1, f2, fs):
     f_max = max(abs(f1), abs(f2))
@@ -1541,10 +1548,24 @@ def _g2_student_form():
             st.success("Datos guardados correctamente.")
 
     if not _g2_student_ready():
-        st.warning("⚠️ Primero completa el registro del estudiante (nombre, registro y fecha de nacimiento).")
-        return {"completed": False, **(st.session_state.get("student_info", {}) or {})}
+        st.markdown(
+            """
+            <div style="
+                background-color: #fff3cd;
+                color: #000000;
+                padding: 12px;
+                border-radius: 6px;
+                border: 1px solid #ffeeba;
+                font-weight: 500;
+            ">
+                ⚠️ Ingresa tus datos para habilitar las dinámicas.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.stop()
 
-    return {"completed": True, **(st.session_state.get("student_info", {}) or {})}
+
 def render_dinamica1_integrada():
     st.markdown("### Dinámica 1 – Muestreo correcto e incorrecto (aliasing)")
 
@@ -1789,98 +1810,22 @@ def render_dinamicas_guia2():
 
     st.markdown("---")
 
-    if st.button("Enviar respuestas (subir a GitHub)", key="g2_btn_enviar"):
-        # Validación de respuestas
-        a1 = {
-            "q1": st.session_state.get("g2_dyn1_q1", "Seleccione una opción"),
-            "q2": st.session_state.get("g2_dyn1_q2", "Seleccione una opción"),
-            "q3": st.session_state.get("g2_dyn1_q3", "Seleccione una opción"),
-        }
-        a2 = {
-            "q1": st.session_state.get("g2_dyn2_q1", "Seleccione una opción"),
-            "q2": st.session_state.get("g2_dyn2_q2", "Seleccione una opción"),
-            "q3": st.session_state.get("g2_dyn2_q3", "Seleccione una opción"),
-        }
-        a3 = {
-            "q1": st.session_state.get("g2_dyn3_q1", "Seleccione una opción"),
-            "q2": st.session_state.get("g2_dyn3_q2", "Seleccione una opción"),
-            "q3": st.session_state.get("g2_dyn3_q3", "Seleccione una opción"),
-        }
+    # -------- ENVÍO FINAL --------
+    disabled = (not (d1_done and d2_done and d3_done)) or st.session_state.get("g2_submitted", False)
 
-        faltan = []
-        if any(v == "Seleccione una opción" for v in a1.values()):
-            faltan.append("Dinámica 1")
-        if any(v == "Seleccione una opción" for v in a2.values()):
-            faltan.append("Dinámica 2")
-        if any(v == "Seleccione una opción" for v in a3.values()):
-            faltan.append("Dinámica 3")
+    if st.session_state.get("g2_submitted", False):
+        st.info("Ya enviaste estas respuestas ✅")
 
-        if faltan:
-            st.error("Aún faltan respuestas en: " + ", ".join(faltan))
+    if st.button("Enviar respuestas (subir a GitHub)", disabled=disabled, key="g2_send_github"):
+        # Datos del estudiante (desde el formulario común)
+        nombre = (student_info.get("name", "") or "").strip()
+        registro = (student_info.get("id", "") or "").strip()
+        dob = (student_info.get("dob", "") or "").strip()
+
+        if not nombre or not registro:
+            st.warning("Completa tus datos (nombre y registro) antes de enviar.")
             return
 
-        # ---- Calificación (misma rúbrica que la versión original) ----
-        correct1 = {"q1": "Caso A", "q2": "Falso", "q3": "fₛ = 8 kHz"}
-        correct2 = {"q1": "Más suave que x[n].", "q2": "Un filtro suavizador (pasa bajas).", "q3": "y[n] = Σ_k x[k]·h[n−k]"}
-        correct3 = {
-            "q1": "Las componentes de alta frecuencia.",
-            "q2": "Uno donde se conservan las bajas frecuencias y se reducen las altas.",
-            "q3": "Un filtro pasa bajas.",
-        }
-
-        def score_from(correct_count: int) -> float:
-            return {3: 10.0, 2: 8.0, 1: 6.0, 0: 0.0}.get(correct_count, 0.0)
-
-        c1 = sum(a1[k] == correct1[k] for k in a1)
-        c2 = sum(a2[k] == correct2[k] for k in a2)
-        c3 = sum(a3[k] == correct3[k] for k in a3)
-
-        res1 = {
-            "dyn_id": 1,
-            "score": score_from(c1),
-            "answers": a1,
-            "correct": correct1,
-            "key": {
-                "descripcion": "Guía 2 - Dinámica 1 - Muestreo correcto e incorrecto",
-                "frecuencia_senal_Hz": 3000.0,
-                "fs_caso_A_Hz": 4000.0,
-                "fs_caso_B_Hz": 600.0,
-            },
-        }
-        res2 = {
-            "dyn_id": 2,
-            "score": score_from(c2),
-            "answers": a2,
-            "correct": correct2,
-            "key": {
-                "descripcion": "Guía 2 - Dinámica 2 - Convolución y salida de un filtro promediador",
-                "tipo_entrada": "Pulso rectangular",
-                "M": 5,
-                "tipo_filtro": "Promediador",
-            },
-        }
-        res3 = {
-            "dyn_id": 3,
-            "score": score_from(c3),
-            "answers": a3,
-            "correct": correct3,
-            "key": {
-                "descripcion": "Guía 2 - Dinámica 3 - Interpretación de respuesta en frecuencia",
-                "fs_Hz": 2000.0,
-                "frecuencias_Hz": [100, 400, 800],
-                "M_lp": 33,
-                "h_hp": "[1, -1]",
-            },
-        }
-
-        # Guardar en session_state para compatibilidad
-        st.session_state["g2_dyn1_result"] = res1
-        st.session_state["g2_dyn2_result"] = res2
-        st.session_state["g2_dyn3_result"] = res3
-
-        # ---- PDF + subida a GitHub (misma lógica que el resumen original) ----
-        
-        # Exportar como PDF (en memoria) y subir a GitHub
         if not REPORTLAB_AVAILABLE:
             st.error(
                 "No se puede generar el PDF porque 'reportlab' no está disponible. "
@@ -1888,9 +1833,14 @@ def render_dinamicas_guia2():
             )
             return
 
+        # Preparar resultados (incluye nota en el PDF, pero NO se muestra al alumno)
+        nota_global = round((float(res1["nota"]) + float(res2["nota"]) + float(res3["nota"])) / 3.0, 2)
+        resultados = [res1, res2, res3]
+
         pdf_bytes, pdf_filename = export_results_pdf_guia2_bytes(
             student_info={"name": nombre, "id": registro, "dob": dob},
             resultados=resultados,
+            nota_global=nota_global,
             logo_path=LOGO_UCA_PATH if (LOGO_UCA_PATH and os.path.exists(LOGO_UCA_PATH)) else None,
         )
 
@@ -1903,18 +1853,16 @@ def render_dinamicas_guia2():
             commit_message=commit_msg,
         )
 
-
         if ok:
             st.session_state["g2_submitted"] = True
-            st.success("Respuestas enviadas y guardadas correctamente en el repositorio ✅")
-            st.info("Consulta tu nota con el catedrático o instructor encargado.")
+            st.success("¡Listo! Respuestas enviadas y PDF subido al repositorio.")
             if isinstance(info, dict) and info.get("html_url"):
                 st.link_button("Ver archivo en GitHub", info["html_url"])
             st.write("Ruta en el repositorio:", repo_path)
+            st.info("Consulta tu nota con el catedrático o instructor encargado.")
         else:
-            st.error(f"No se pudo subir el PDF a GitHub: {info}")
-            st.write("Ruta en el repositorio:", repo_path)
-# =========================================================
+            st.error(f"No se pudo subir el PDF: {info}")
+
 # Render principal Guía 2
 # =========================================================
 
