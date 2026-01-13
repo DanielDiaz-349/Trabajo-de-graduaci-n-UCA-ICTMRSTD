@@ -1455,6 +1455,14 @@ def render_dinamica1():
         title="Convergencia de la frecuencia relativa",
         xaxis_title="Número de ensayos n",
         yaxis_title="Frecuencia relativa acumulada f_R(n)",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.35,
+            xanchor="center",
+            x=0.5,
+            font=dict(color=theme["font_color"]),
+        ),
         legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
     )
     _apply_plot_theme(fig, theme)
@@ -1658,6 +1666,14 @@ def render_dinamica3():
         title="Criterio MAP: comparación de densidades ponderadas",
         xaxis_title="r",
         yaxis_title="Densidad ponderada",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.35,
+            xanchor="center",
+            x=0.5,
+            font=dict(color=theme["font_color"]),
+        ),
         legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
     )
     _apply_plot_theme(fig, theme)
