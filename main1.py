@@ -20,6 +20,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import streamlit as st
+from io import BytesIO
+import datetime
+
+# PDF (en memoria) para subir resultados sin escribir archivos locales
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas as rcanvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    REPORTLAB_AVAILABLE = False
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -29,7 +42,7 @@ import guia3
 import guia4
 import guia5
 
-from github_uploader import upload_file_to_github_results, upload_text_to_github_results
+from github_uploader import upload_bytes_to_github_results
 
 
 # =========================
@@ -99,6 +112,7 @@ Analizar diferentes fuentes de ruido y los efectos que producen sobre señales e
 - Introducir al estudiante a los conceptos de indicadores de desempeño en sistemas de telecomunicación
 - Proporcionar al estudiante herramientas de aprendizaje y retroalimentación
 """
+
 
 INTRO_FULL_TEXT = r"""
 
@@ -245,7 +259,7 @@ BER= número de bits erróneos / total de bits recibidos
 MATERIALES_TEXT = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- Dispositivo con conexión a internet
+- Dispositivo con acceso a internet
 """
 
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
@@ -566,6 +580,122 @@ def generate_dyn2_key():
 
 # =========================
 # EXPORT PDF (GUÍA 1)
+
+def _sanitize_filename(text: str) -> str:
+    import re
+    t = (text or "").strip().lower()
+    t = re.sub(r"\s+", "_", t)
+    t = re.sub(r"[^a-z0-9_\-\.]", "", t)
+    return t or "archivo"
+
+
+def _safe_str(x) -> str:
+    return "" if x is None else str(x).strip()
+
+
+def _ensure_unicode_font() -> str:
+    """Intenta usar una fuente TTF (para tildes/ñ) si está disponible."""
+    if not REPORTLAB_AVAILABLE:
+        return "Helvetica"
+    try:
+        import os
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont("DejaVuSans", font_path))
+            return "DejaVuSans"
+    except Exception:
+        pass
+    return "Helvetica"
+
+
+def export_results_pdf_guia1_bytes(student_info: dict, resultados: list, logo_path: str = None):
+    """Genera un PDF en memoria (bytes) con los resultados de Guía 1."""
+    if not REPORTLAB_AVAILABLE:
+        raise RuntimeError("ReportLab no está disponible. Agrega 'reportlab' a requirements.txt")
+
+    base_font = _ensure_unicode_font()
+
+    # Nombre de archivo (en repo) con timestamp para evitar colisiones
+    registro = _sanitize_filename(_safe_str(student_info.get("registro", "")))
+    nombre = _sanitize_filename(_safe_str(student_info.get("nombre", "")))
+    ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    pdf_filename = f"guia1_{registro}_{nombre}_{ts}.pdf"
+
+    buf = BytesIO()
+    c = rcanvas.Canvas(buf, pagesize=letter)
+    width, height = letter
+
+    # Encabezado
+    y = height - 50
+    c.setFont(base_font, 16)
+    c.drawString(50, y, "Guía 1 - Resultados de dinámicas")
+    y -= 22
+
+    # Logo (opcional)
+    if logo_path:
+        try:
+            img = ImageReader(logo_path)
+            c.drawImage(img, width - 140, height - 85, width=80, height=80, mask="auto")
+        except Exception:
+            pass
+
+    c.setFont(base_font, 11)
+    c.drawString(50, y, f"Nombre: {_safe_str(student_info.get('nombre', ''))}")
+    y -= 16
+    c.drawString(50, y, f"Registro: {_safe_str(student_info.get('registro', ''))}")
+    y -= 16
+    c.drawString(50, y, f"Fecha: {ts.replace('_', ' ')}")
+    y -= 22
+
+    def new_page():
+        nonlocal y
+        c.showPage()
+        c.setFont(base_font, 11)
+        y = height - 60
+
+    # Cuerpo: resultados
+    for item in resultados:
+        if y < 120:
+            new_page()
+
+        titulo = _safe_str(item.get("titulo", "Dinámica"))
+        ok = item.get("correctas", 0)
+        total = item.get("total", 0)
+
+        c.setFont(base_font, 13)
+        c.drawString(50, y, f"{titulo}  ({ok}/{total})")
+        y -= 18
+
+        # Parámetros / key
+        params = item.get("key", {})
+        answers = item.get("answers", {})
+
+        c.setFont(base_font, 10)
+
+        # Imprime pares key:val en dos columnas para ahorrar espacio
+        def draw_kv(label, kv_dict):
+            nonlocal y
+            c.setFont(base_font, 10)
+            c.drawString(60, y, label)
+            y -= 14
+            for k, v in kv_dict.items():
+                if y < 90:
+                    new_page()
+                c.drawString(70, y, f"- {k}: {_safe_str(v)}")
+                y -= 12
+
+        draw_kv("Parámetros (clave):", params)
+        draw_kv("Respuestas del estudiante:", answers)
+
+        y -= 8
+        c.line(50, y, width - 50, y)
+        y -= 18
+
+    c.save()
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    return pdf_bytes, pdf_filename
+
 # =========================
 def render_ejemplo1():
     """
@@ -1225,7 +1355,7 @@ def render_dinamicas_guia1():
             st.success("Datos guardados correctamente.")
 
     if not all(state["student"].values()):
-        st.warning("⚠️ Ingresa tus datos para habilitar las dinámicas.")
+        st.warning("Ingresa tus datos para habilitar las dinámicas.")
         return
 
     st.markdown("---")
@@ -1401,55 +1531,42 @@ def render_dinamicas_guia1():
         score1 = {4: 10, 3: 8, 2: 6, 1: 4}.get(c1, 0)
         score2 = {3: 10, 2: 8, 1: 6}.get(c2, 0)
 
-        payload = {
-            "guide": 1,
-            "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
-            "student": state["student"],
-            "results": [
-                {
-                    "dynamic": 1,
-                    "score": score1,
-                    "correct_count": c1,
-                    "answers": ans1,
-                    "answer_key": correct1,
-                    "case": {"snr_dB": dyn1_key["snr"], "delay_T": dyn1_key["delay"]},
-                    "meta": state["dyn1"].get("meta", {}),
-                },
-                {
-                    "dynamic": 2,
-                    "score": score2,
-                    "correct_count": c2,
-                    "answers": ans2,
-                    "answer_key": correct2,
-                    "case": {"filter": dyn2_key.get("filter_name"), "tb": dyn2_key.get("tb")},
-                    "meta": state["dyn2"].get("meta", {}),
-                },
-            ],
-            "overall": {"score_sum": score1 + score2, "score_avg": (score1 + score2) / 2},
-        }
+                    # Exportar como PDF (en memoria) y subir a GitHub
+            if not REPORTLAB_AVAILABLE:
+                st.error("No se puede generar el PDF porque 'reportlab' no está disponible. Agrega 'reportlab' a requirements.txt.")
+            else:
+                pdf_bytes, pdf_filename = export_results_pdf_guia1_bytes(
+                    student_info={"nombre": nombre, "registro": registro},
+                    resultados=resultados,
+                    logo_path=LOGO_UCA_PATH if LOGO_UCA_PATH else None,
+                )
 
-        content = json.dumps(payload, ensure_ascii=False, indent=2)
+                repo_path = f"guia1/{pdf_filename}"
+                commit_msg = f"Guía 1 - {registro} - {nombre}"
 
-        sid = (state["student"].get("id") or "sin_id").strip()
-        sid_clean = re.sub(r"[^A-Za-z0-9_-]+", "_", sid).strip("_") or "sin_id"
-        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        repo_path = f"resultados/guia1/{sid_clean}/guia1_{sid_clean}_{ts}.json"
-        commit_msg = f"Guía 1 resultados {sid_clean} {ts}"
+                ok, info = upload_bytes_to_github_results(
+                    data_bytes=pdf_bytes,
+                    repo_path=repo_path,
+                    commit_message=commit_msg,
+                )
 
-        ok, info = upload_text_to_github_results(content, repo_path, commit_message=commit_msg)
+                # Descarga local (sin escribir archivos en disco)
+                st.download_button(
+                    "Descargar PDF (copia)",
+                    data=pdf_bytes,
+                    file_name=pdf_filename,
+                    mime="application/pdf",
+                    key="g1_pdf_download_after_submit",
+                )
 
-        if ok:
-            state["submitted"] = True
-            st.success("Respuestas enviadas y guardadas en GitHub ✅")
-            if info.get("html_url"):
-                st.link_button("Ver archivo en GitHub", info["html_url"])
-            st.caption(f"Ruta en repo: `{repo_path}`")
-        else:
-            st.error("No se pudo subir a GitHub.")
-            st.code(info.get("error", "Error desconocido"))
-            st.info(
-                "Revisa Secrets (token/owner/repo/branch) y que el token tenga permisos de escritura (Contents)."
-            )
+                if ok:
+                    st.success("¡Listo! PDF generado y subido al repositorio.")
+                    if isinstance(info, dict) and info.get("html_url"):
+                        st.markdown(f"[Ver archivo en GitHub]({info['html_url']})")
+                    st.session_state["g1_submitted"] = True
+                else:
+                    st.error(f"No se pudo subir el PDF: {info}")
+
 # =========================
 # GUÍA 1 (TABS)
 # =========================
