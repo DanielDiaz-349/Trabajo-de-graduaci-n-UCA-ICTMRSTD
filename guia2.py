@@ -1442,20 +1442,38 @@ def render_dinamica1():
     t_m = np.arange(0, T, 1.0 / fs_malo)
     x_m = np.sin(2 * np.pi * f_sig * t_m)
 
-    fig, axs = plt.subplots(2, 1, figsize=(7, 5), sharex=False)
-    axs[0].stem(t_b, x_b)
-    axs[0].set_title(f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)")
-    axs[0].set_ylabel("x_A[n]")
-    axs[0].grid(True, linestyle=":")
-
-    axs[1].stem(t_m, x_m)
-    axs[1].set_title(f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)")
-    axs[1].set_xlabel("Tiempo (s)")
-    axs[1].set_ylabel("x_B[n]")
-    axs[1].grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=(
+            f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)",
+            f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_A[n]"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=t_m, y=x_m, mode="markers", name="x_B[n]"),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x_A[n]", row=1, col=1)
+    fig.update_yaxes(title_text="x_B[n]", row=2, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
+    fig.update_layout(
+        height=520,
+        margin=dict(l=40, r=20, t=80, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("### Preguntas")
 
@@ -1543,21 +1561,36 @@ def render_dinamica2():
     h = np.ones(5) / 5.0  # filtro promediador
     y = np.convolve(x, h)
 
-    fig, axs = plt.subplots(2, 1, figsize=(7, 5), sharex=False)
-    axs[0].stem(n, x)
-    axs[0].set_title("Entrada x[n] (pulso)")
-    axs[0].set_ylabel("x[n]")
-    axs[0].grid(True, linestyle=":")
-
     n_h = np.arange(0, len(h))
-    axs[1].stem(n_h, h)
-    axs[1].set_title("Respuesta al impulso h[n] (promediador)")
-    axs[1].set_xlabel("n")
-    axs[1].set_ylabel("h[n]")
-    axs[1].grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=("Entrada x[n] (pulso)", "Respuesta al impulso h[n] (promediador)"),
+    )
+    fig.add_trace(
+        go.Scatter(x=n, y=x, mode="markers", name="x[n]"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x[n]", row=1, col=1)
+    fig.update_yaxes(title_text="h[n]", row=2, col=1)
+    fig.update_xaxes(title_text="n", row=2, col=1)
+    fig.update_layout(
+        height=520,
+        margin=dict(l=40, r=20, t=80, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("### Preguntas")
 
@@ -1629,14 +1662,21 @@ def render_dinamica2():
 
         # (Opcional) Mostrar la salida como ya la tenías:
         n_y = np.arange(0, len(y))
-        fig2, ax2 = plt.subplots(1, 1, figsize=(7, 3))
-        ax2.stem(n_y, y)
-        ax2.set_title("Salida y[n] = x[n] * h[n]")
-        ax2.set_xlabel("n")
-        ax2.set_ylabel("y[n]")
-        ax2.grid(True, linestyle=":")
-        fig2.tight_layout(pad=2.0)
-        st.pyplot(fig2)
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=n_y, y=y, mode="markers", name="y[n]"))
+        fig2.update_layout(
+            title="Salida y[n] = x[n] * h[n]",
+            height=360,
+            margin=dict(l=40, r=20, t=60, b=50),
+            hovermode="x unified",
+            showlegend=False,
+        )
+        fig2.update_xaxes(title_text="n")
+        fig2.update_yaxes(title_text="y[n]")
+        plot_theme = _get_plot_theme()
+        _apply_plot_theme(fig2, plot_theme, font_size=12)
+        fig2.update_layout(title_font=dict(color=plot_theme["font_color"], size=14))
+        st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         st.success("Respuestas guardadas para la Dinámica 2. Continúa con las demás dinámicas.")
 
@@ -1681,25 +1721,46 @@ def render_dinamica3():
     H_lp = np.fft.fft(h_lp, n=N)
     H_hp = np.fft.fft(h_hp, n=N)
 
-    fig, axs = plt.subplots(3, 1, figsize=(7, 7), sharex=True)
-    axs[0].stem(fpos, Xmag)
-    axs[0].set_ylabel("|X(f)|")
-    axs[0].set_title("Espectro de entrada")
-
-    axs[1].stem(fpos, np.abs(H_lp[idx_pos]))
-    axs[1].set_ylabel("|H_lp(f)|")
-    axs[1].set_title("Filtro pasa bajas (referencia)")
-
-    axs[2].stem(fpos, np.abs(H_hp[idx_pos]))
-    axs[2].set_xlabel("Frecuencia (Hz)")
-    axs[2].set_ylabel("|H_hp(f)|")
-    axs[2].set_title("Filtro pasa altas (referencia)")
-
-    for ax in axs:
-        ax.grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.12,
+        subplot_titles=(
+            "Espectro de entrada",
+            "Filtro pasa bajas (referencia)",
+            "Filtro pasa altas (referencia)",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=Xmag, mode="markers", name="|X(f)|"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=np.abs(H_lp[idx_pos]), mode="markers", name="|H_lp(f)|"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=np.abs(H_hp[idx_pos]), mode="markers", name="|H_hp(f)|"),
+        row=3,
+        col=1,
+    )
+    fig.update_yaxes(title_text="|X(f)|", row=1, col=1)
+    fig.update_yaxes(title_text="|H_lp(f)|", row=2, col=1)
+    fig.update_yaxes(title_text="|H_hp(f)|", row=3, col=1)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=3, col=1)
+    fig.update_layout(
+        height=680,
+        margin=dict(l=40, r=20, t=90, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("### Preguntas")
 
@@ -1857,23 +1918,49 @@ def render_dinamica1_integrada():
     t_m = np.arange(0, T, 1.0 / fs_malo)
     x_m = np.sin(2 * np.pi * f_sig * t_m)
 
-    fig, axs = plt.subplots(2, 1, figsize=(7, 5), sharex=True)
-
-    axs[0].plot(t_cont, x_cont, linewidth=1.0)
-    axs[0].stem(t_b, x_b)
-    axs[0].set_title(f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)")
-    axs[0].set_ylabel("x_A[n]")
-    axs[0].grid(True, linestyle=":")
-
-    axs[1].plot(t_cont, x_cont, linewidth=1.0)
-    axs[1].stem(t_m, x_m)
-    axs[1].set_title(f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)")
-    axs[1].set_xlabel("Tiempo (s)")
-    axs[1].set_ylabel("x_B[n]")
-    axs[1].grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.18,
+        subplot_titles=(
+            f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)",
+            f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="Señal continua"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_A[n]"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="Señal continua"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=t_m, y=x_m, mode="markers", name="x_B[n]"),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x_A[n]", row=1, col=1)
+    fig.update_yaxes(title_text="x_B[n]", row=2, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
+    fig.update_layout(
+        height=520,
+        margin=dict(l=40, r=20, t=80, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     st.radio(
@@ -1919,21 +2006,36 @@ def render_dinamica2_integrada():
     M = 5
     h = np.ones(M) / M  # promediador (pasa bajas)
 
-    fig, axs = plt.subplots(2, 1, figsize=(7, 5), sharex=False)
-    axs[0].stem(n, x)
-    axs[0].set_title("Entrada x[n] (pulso)")
-    axs[0].set_ylabel("x[n]")
-    axs[0].grid(True, linestyle=":")
-
     n_h = np.arange(0, len(h))
-    axs[1].stem(n_h, h)
-    axs[1].set_title("Respuesta al impulso h[n] (promediador)")
-    axs[1].set_xlabel("n")
-    axs[1].set_ylabel("h[n]")
-    axs[1].grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=("Entrada x[n] (pulso)", "Respuesta al impulso h[n] (promediador)"),
+    )
+    fig.add_trace(
+        go.Scatter(x=n, y=x, mode="markers", name="x[n]"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x[n]", row=1, col=1)
+    fig.update_yaxes(title_text="h[n]", row=2, col=1)
+    fig.update_xaxes(title_text="n", row=2, col=1)
+    fig.update_layout(
+        height=520,
+        margin=dict(l=40, r=20, t=80, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     st.radio(
@@ -1995,25 +2097,46 @@ def render_dinamica3_integrada():
     H_lp = np.fft.fft(h_lp, n=N)
     H_hp = np.fft.fft(h_hp, n=N)
 
-    fig, axs = plt.subplots(3, 1, figsize=(7, 7), sharex=True)
-    axs[0].stem(fpos, Xmag)
-    axs[0].set_ylabel("|X(f)|")
-    axs[0].set_title("Espectro de entrada")
-
-    axs[1].stem(fpos, np.abs(H_lp[idx_pos]))
-    axs[1].set_ylabel("|H_lp(f)|")
-    axs[1].set_title("Filtro pasa bajas (referencia)")
-
-    axs[2].stem(fpos, np.abs(H_hp[idx_pos]))
-    axs[2].set_xlabel("Frecuencia (Hz)")
-    axs[2].set_ylabel("|H_hp(f)|")
-    axs[2].set_title("Filtro pasa altas (referencia)")
-
-    for ax in axs:
-        ax.grid(True, linestyle=":")
-
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.12,
+        subplot_titles=(
+            "Espectro de entrada",
+            "Filtro pasa bajas (referencia)",
+            "Filtro pasa altas (referencia)",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=Xmag, mode="markers", name="|X(f)|"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=np.abs(H_lp[idx_pos]), mode="markers", name="|H_lp(f)|"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=fpos, y=np.abs(H_hp[idx_pos]), mode="markers", name="|H_hp(f)|"),
+        row=3,
+        col=1,
+    )
+    fig.update_yaxes(title_text="|X(f)|", row=1, col=1)
+    fig.update_yaxes(title_text="|H_lp(f)|", row=2, col=1)
+    fig.update_yaxes(title_text="|H_hp(f)|", row=3, col=1)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=3, col=1)
+    fig.update_layout(
+        height=680,
+        margin=dict(l=40, r=20, t=90, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     st.radio(
