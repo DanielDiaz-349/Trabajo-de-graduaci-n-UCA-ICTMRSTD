@@ -9,6 +9,7 @@ Ejemplos (1–4), Dinámicas (1–3) y Conclusiones.
 import os
 import json
 import datetime
+import re
 import requests
 import base64
 import numpy as np
@@ -1846,14 +1847,14 @@ def render_dinamicas_guia2():
         "q3": "fₛ = 8 kHz",
     }
     d2_corr = {
-        "q1": "Se vuelve más suave (promediada)",
-        "q2": "Porque promedia muestras (filtro pasa bajas)",
-        "q3": "y[n] = (1/M) · Σ x[n-k]",
+        "q1": "Más suave que x[n].",
+        "q2": "Un filtro suavizador (pasa bajas).",
+        "q3": "y[n] = Σ_k x[k]·h[n−k]",
     }
     d3_corr = {
-        "q1": "Las componentes de alta frecuencia",
-        "q2": "Uno donde se conservan las bajas y se atenúan las altas",
-        "q3": "Un filtro pasa bajas",
+        "q1": "Las componentes de alta frecuencia.",
+        "q2": "Uno donde se conservan las bajas frecuencias y se reducen las altas.",
+        "q3": "Un filtro pasa bajas.",
     }
 
     def _count_correct(ans: dict, corr: dict) -> int:
