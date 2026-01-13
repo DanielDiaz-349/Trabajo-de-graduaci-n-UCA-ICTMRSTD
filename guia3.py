@@ -14,6 +14,8 @@ import io
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # ---------------------------------------------------------
 # Constantes generales (compatibles con Guía 1 y 2)
@@ -29,6 +31,74 @@ TEMA_TG = (
     "Introducción a la caracterización y tratamiento matemático del ruido "
     "en sistemas de telecomunicaciones digitales"
 )
+
+
+def _get_plot_theme():
+    ui_theme = st.session_state.get("ui_theme")
+    if ui_theme:
+        theme_name = ui_theme.lower()
+    else:
+        base_theme = (st.get_option("theme.base") or "light").lower()
+        theme_name = "obscuro" if base_theme == "dark" else "blanco"
+
+    if theme_name == "obscuro":
+        return {
+            "paper_bgcolor": "#0f1113",
+            "plot_bgcolor": "#2b2f36",
+            "font_color": "#ffffff",
+            "grid_color": "#444444",
+            "axis_color": "#ffffff",
+            "hover_bg": "#2b2f36",
+            "hover_font": "#ffffff",
+        }
+    if theme_name == "rosa":
+        return {
+            "paper_bgcolor": "#fff6fb",
+            "plot_bgcolor": "#ffffff",
+            "font_color": "#330033",
+            "grid_color": "#f0c6dc",
+            "axis_color": "#330033",
+            "hover_bg": "#ffd6eb",
+            "hover_font": "#330033",
+        }
+    return {
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "font_color": "#000000",
+        "grid_color": "#d9d9d9",
+        "axis_color": "#000000",
+        "hover_bg": "#ffffff",
+        "hover_font": "#000000",
+    }
+
+
+def _apply_plot_theme(fig, theme, font_size=12):
+    fig.update_layout(
+        paper_bgcolor=theme["paper_bgcolor"],
+        plot_bgcolor=theme["plot_bgcolor"],
+        font=dict(color=theme["font_color"], size=font_size),
+        hoverlabel=dict(bgcolor=theme["hover_bg"], font=dict(color=theme["hover_font"])),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
 
 # --- Opcional: generación de PDF (igual estilo Guía 1 y 2) ---
 REPORTLAB_AVAILABLE = importlib.util.find_spec("reportlab") is not None
@@ -573,42 +643,62 @@ def render_ejemplo1():
         frec_rel = np.cumsum(muestras) / np.arange(1, N + 1)
 
         with col2:
-            fig, ax = plt.subplots(figsize=(7, 3))
-            ax.plot(frec_rel, label="Frecuencia relativa")
-            ax.axhline(p_teor, color="r", linestyle="--", label="Probabilidad teórica")
-            ax.set_xlabel("Número de ensayos")
-            ax.set_ylabel("Frecuencia relativa")
-            ax.set_title(f"Convergencia de frecuencia relativa al modelar el experimento")
-            ax.grid(True, linestyle=":")
-            ax.legend()
-            st.pyplot(fig)
+            fig = go.Figure()
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(1, N + 1),
+                    y=frec_rel,
+                    mode="lines",
+                    name="Frecuencia relativa",
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=[1, N],
+                    y=[p_teor, p_teor],
+                    mode="lines",
+                    name="Probabilidad teórica",
+                    line=dict(color="red", dash="dash"),
+                )
+            )
+            fig.update_layout(
+                title="Convergencia de frecuencia relativa al modelar el experimento",
+                xaxis_title="Número de ensayos",
+                yaxis_title="Frecuencia relativa",
+                height=320,
+                margin=dict(l=40, r=20, t=60, b=40),
+                hovermode="x unified",
+            )
+            plot_theme = _get_plot_theme()
+            _apply_plot_theme(fig, plot_theme, font_size=12)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        st.markdown("#### Explicación de la simulación")
-        st.markdown(
-            f"En este experimento se representa un proceso aleatorio discreto mediante una sucesión de ensayos independientes, como el lanzamiento de una moneda o de un dado. En cada ensayo se evalúa la ocurrencia de un evento de interés A, por ejemplo, la obtención de “cara” en el caso de la moneda.Aunque la probabilidad teórica P(A) es conocida a partir del modelo probabilístico, el resultado de cada ensayo individual no puede predecirse con certeza, reflejando la naturaleza aleatoria del fenómeno.\n\n"
-            "A partir de los datos generados se calcula la frecuencia relativa "
-            "fN(A)=N(A)/N, que representa una estimación empírica de la probabilidad. "
-            "Cuando el número de ensayos es pequeño, esta estimación presenta variaciones significativas "
-            "debido a las fluctuaciones aleatorias propias del proceso. Sin embargo, a medida que el número "
-            "de ensayos aumenta, la frecuencia relativa tiende a estabilizarse alrededor de la probabilidad "
-            "teórica.\n\n"
-            "Este comportamiento ilustra el fundamento experimental de la ley de los grandes números "
-        )
+        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+            st.markdown(
+                f"En este experimento se representa un proceso aleatorio discreto mediante una sucesión de ensayos independientes, como el lanzamiento de una moneda o de un dado. En cada ensayo se evalúa la ocurrencia de un evento de interés A, por ejemplo, la obtención de “cara” en el caso de la moneda.Aunque la probabilidad teórica P(A) es conocida a partir del modelo probabilístico, el resultado de cada ensayo individual no puede predecirse con certeza, reflejando la naturaleza aleatoria del fenómeno.\n\n"
+                "A partir de los datos generados se calcula la frecuencia relativa "
+                "fN(A)=N(A)/N, que representa una estimación empírica de la probabilidad. "
+                "Cuando el número de ensayos es pequeño, esta estimación presenta variaciones significativas "
+                "debido a las fluctuaciones aleatorias propias del proceso. Sin embargo, a medida que el número "
+                "de ensayos aumenta, la frecuencia relativa tiende a estabilizarse alrededor de la probabilidad "
+                "teórica.\n\n"
+                "Este comportamiento ilustra el fundamento experimental de la ley de los grandes números "
+            )
 
-        st.markdown("#### Preguntas y respuestas")
-        st.markdown(
-            "- **1. ¿Por qué la frecuencia relativa varía tanto para valores pequeños de N?**  \n"
-            "  **R:** Porque con pocos ensayos la muestra disponible es limitada y las fluctuaciones aleatorias dominan; "
-            "no hay suficiente información estadística para que el promedio se estabilice.\n\n"
-            "- **2. ¿Qué sucede con la frecuencia relativa cuando N es muy grande?**  \n"
-            "  **R:** Se aproxima a la probabilidad real P(A), mostrando el principio de la ley de los grandes números.\n\n" 
-            "- **3. ¿Que es la ley de los numeros grandes?**  \n"
-            "**R:** La ley de los grandes números, en probabilidad, establece que los resultados de una prueba en una muestra se acercan al promedio de la población total a medida que aumenta el tamaño de la muestra. Es decir, se vuelve más representativa de la población en su conjunto.\n\n"
-            "- **4. ¿Cómo se relaciona este experimento con el modelado del ruido en un canal de comunicación?**  \n"
-            "  **R:** El ruido, igual que el resultado de un lanzamiento, es impredecible muestra a muestra, pero su "
-            "distribución de probabilidad se puede estimar por frecuencias relativas a partir de muchas "
-            "realizaciones."
-        )
+            st.markdown("#### Preguntas y respuestas")
+            st.markdown(
+                "- **1. ¿Por qué la frecuencia relativa varía tanto para valores pequeños de N?**  \n"
+                "  **R:** Porque con pocos ensayos la muestra disponible es limitada y las fluctuaciones aleatorias dominan; "
+                "no hay suficiente información estadística para que el promedio se estabilice.\n\n"
+                "- **2. ¿Qué sucede con la frecuencia relativa cuando N es muy grande?**  \n"
+                "  **R:** Se aproxima a la probabilidad real P(A), mostrando el principio de la ley de los grandes números.\n\n"
+                "- **3. ¿Que es la ley de los numeros grandes?**  \n"
+                "**R:** La ley de los grandes números, en probabilidad, establece que los resultados de una prueba en una muestra se acercan al promedio de la población total a medida que aumenta el tamaño de la muestra. Es decir, se vuelve más representativa de la población en su conjunto.\n\n"
+                "- **4. ¿Cómo se relaciona este experimento con el modelado del ruido en un canal de comunicación?**  \n"
+                "  **R:** El ruido, igual que el resultado de un lanzamiento, es impredecible muestra a muestra, pero su "
+                "distribución de probabilidad se puede estimar por frecuencias relativas a partir de muchas "
+                "realizaciones."
+            )
 
 def render_ejemplo2():
     """
@@ -664,80 +754,141 @@ def render_ejemplo2():
 
         with col2:
             tabs = st.tabs(["Discreta (dado)", "Continua (uniforme)", "Mixta"])
+            plot_theme = _get_plot_theme()
 
             # Discreta
             with tabs[0]:
-                fig1, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 4))
                 valores, cuentas = np.unique(Xd, return_counts=True)
-                ax1.bar(valores, cuentas / N, width=0.6)
-                ax1.set_title("PDF empírica")
-                ax1.set_xlabel("Resultado")
-                ax1.set_ylabel("Probabilidad")
-
                 xs, ys = emp_cdf(Xd)
-                ax2.step(xs, ys, where="post")
-                ax2.set_title("CDF empírica")
-                ax2.set_xlabel("x")
-                ax2.set_ylabel("F(x)")
-                ax2.grid(True, linestyle=":")
-                fig1.tight_layout()
-                st.pyplot(fig1)
+                fig1 = make_subplots(
+                    rows=2,
+                    cols=1,
+                    shared_xaxes=False,
+                    vertical_spacing=0.16,
+                    subplot_titles=("PDF empírica", "CDF empírica"),
+                )
+                fig1.add_trace(
+                    go.Bar(x=valores, y=cuentas / N, name="PDF empírica"),
+                    row=1,
+                    col=1,
+                )
+                fig1.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode="lines",
+                        name="CDF empírica",
+                        line_shape="hv",
+                    ),
+                    row=2,
+                    col=1,
+                )
+                fig1.update_xaxes(title_text="Resultado", row=1, col=1)
+                fig1.update_yaxes(title_text="Probabilidad", row=1, col=1)
+                fig1.update_xaxes(title_text="x", row=2, col=1)
+                fig1.update_yaxes(title_text="F(x)", row=2, col=1)
+                fig1.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                _apply_plot_theme(fig1, plot_theme, font_size=12)
+                fig1.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
+                st.plotly_chart(fig1, use_container_width=True, theme=None)
 
             # Continua
             with tabs[1]:
-                fig2, (bx1, bx2) = plt.subplots(2, 1, figsize=(7, 4))
-                bx1.hist(Xc, bins=40, density=True, alpha=0.7)
-                bx1.set_title("PDF empírica")
-                bx1.set_xlabel("x")
-                bx1.set_ylabel("f(x)")
-
                 xs, ys = emp_cdf(Xc)
-                bx2.plot(xs, ys)
-                bx2.set_title("CDF empírica")
-                bx2.set_xlabel("x")
-                bx2.set_ylabel("F(x)")
-                bx2.grid(True, linestyle=":")
-                fig2.tight_layout()
-                st.pyplot(fig2)
+                fig2 = make_subplots(
+                    rows=2,
+                    cols=1,
+                    shared_xaxes=False,
+                    vertical_spacing=0.16,
+                    subplot_titles=("PDF empírica", "CDF empírica"),
+                )
+                fig2.add_trace(
+                    go.Histogram(
+                        x=Xc,
+                        nbinsx=40,
+                        histnorm="probability density",
+                        name="PDF empírica",
+                        opacity=0.7,
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig2.add_trace(
+                    go.Scatter(x=xs, y=ys, mode="lines", name="CDF empírica"),
+                    row=2,
+                    col=1,
+                )
+                fig2.update_xaxes(title_text="x", row=1, col=1)
+                fig2.update_yaxes(title_text="f(x)", row=1, col=1)
+                fig2.update_xaxes(title_text="x", row=2, col=1)
+                fig2.update_yaxes(title_text="F(x)", row=2, col=1)
+                fig2.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                _apply_plot_theme(fig2, plot_theme, font_size=12)
+                fig2.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
+                st.plotly_chart(fig2, use_container_width=True, theme=None)
 
             # Mixta
             with tabs[2]:
-                fig3, (cx1, cx2) = plt.subplots(2, 1, figsize=(7, 4))
-                cx1.hist(Xm, bins=40, density=True, alpha=0.7)
-                cx1.set_title("PDF empírica")
-                cx1.set_xlabel("x")
-                cx1.set_ylabel("f(x)")
-
                 xs, ys = emp_cdf(Xm)
-                cx2.step(xs, ys, where="post")
-                cx2.set_title("CDF empírica")
-                cx2.set_xlabel("x")
-                cx2.set_ylabel("F(x)")
-                cx2.grid(True, linestyle=":")
-                fig3.tight_layout()
-                st.pyplot(fig3)
+                fig3 = make_subplots(
+                    rows=2,
+                    cols=1,
+                    shared_xaxes=False,
+                    vertical_spacing=0.16,
+                    subplot_titles=("PDF empírica", "CDF empírica"),
+                )
+                fig3.add_trace(
+                    go.Histogram(
+                        x=Xm,
+                        nbinsx=40,
+                        histnorm="probability density",
+                        name="PDF empírica",
+                        opacity=0.7,
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig3.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=ys,
+                        mode="lines",
+                        name="CDF empírica",
+                        line_shape="hv",
+                    ),
+                    row=2,
+                    col=1,
+                )
+                fig3.update_xaxes(title_text="x", row=1, col=1)
+                fig3.update_yaxes(title_text="f(x)", row=1, col=1)
+                fig3.update_xaxes(title_text="x", row=2, col=1)
+                fig3.update_yaxes(title_text="F(x)", row=2, col=1)
+                fig3.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                _apply_plot_theme(fig3, plot_theme, font_size=12)
+                fig3.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
+                st.plotly_chart(fig3, use_container_width=True, theme=None)
 
-        st.markdown("#### Explicación de la simulación")
-        st.markdown(
-            "Caracterizar una variable aleatoria consiste en describir su comportamiento probabilístico mediante funciones que determinan cómo se distribuyen sus valores. La herramienta más general es la función de distribución acumulada (CDF). Cuando la variable es continua, también puede describirse mediante una función de densidad de probabilidad (PDF); y cuando es discreta, mediante una función de delta de diracs que representan una masa de probabilidad.\n\n"
-            "**¿Que se observa en las gráficas?**\n\n"
-            "Las variables discretas producen una **CDF** escalonada con saltos en los valores posibles y un tren de delta diracs para la **PDF** \n\n"
-            "las variables continuas generan una **CDF** suave y una **PDF** que se interpreta como densidad de probabilidad.\n\n "
-            "La variable mixta combina ambas características: presenta un salto en el valor puntual con probabilidad asignada y "
-            "una parte continua en el resto del intervalo.\n\n"
-            "En general, la función de distribución acumulada (CDF) de una variable aleatoria representa la probabilidad acumulada de que dicha variable tome valores menores o iguales a un cierto umbral. Para variables discretas, la CDF se obtiene sumando las probabilidades de todos los valores posibles hasta ese punto. Para variables continuas, la CDF se define como la integral de la densidad de probabilidad. En el caso mixto, la CDF combina incrementos discretos con tramos continuos, describiendo completamente el comportamiento probabilístico de la variable\n\n"
-            "Para variables continuas, la PDF describe cómo se distribuye la probabilidad “por unidad de valor” y permite obtener probabilidades integrando sobre intervalos; además, es la derivada de la CDF cuando esta es derivable. Para variables discretas no existe PDF como tal, sino una función de delta de diracs que representan una masa de probabilidad que asigna probabilidad a valores puntuales. En variables mixtas, la parte continua se modela con una PDF y la parte discreta con masas puntuales (saltos en la CDF)."
-        )
+        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+            st.markdown(
+                "Caracterizar una variable aleatoria consiste en describir su comportamiento probabilístico mediante funciones que determinan cómo se distribuyen sus valores. La herramienta más general es la función de distribución acumulada (CDF). Cuando la variable es continua, también puede describirse mediante una función de densidad de probabilidad (PDF); y cuando es discreta, mediante una función de delta de diracs que representan una masa de probabilidad.\n\n"
+                "**¿Que se observa en las gráficas?**\n\n"
+                "Las variables discretas producen una **CDF** escalonada con saltos en los valores posibles y un tren de delta diracs para la **PDF** \n\n"
+                "las variables continuas generan una **CDF** suave y una **PDF** que se interpreta como densidad de probabilidad.\n\n "
+                "La variable mixta combina ambas características: presenta un salto en el valor puntual con probabilidad asignada y "
+                "una parte continua en el resto del intervalo.\n\n"
+                "En general, la función de distribución acumulada (CDF) de una variable aleatoria representa la probabilidad acumulada de que dicha variable tome valores menores o iguales a un cierto umbral. Para variables discretas, la CDF se obtiene sumando las probabilidades de todos los valores posibles hasta ese punto. Para variables continuas, la CDF se define como la integral de la densidad de probabilidad. En el caso mixto, la CDF combina incrementos discretos con tramos continuos, describiendo completamente el comportamiento probabilístico de la variable\n\n"
+                "Para variables continuas, la PDF describe cómo se distribuye la probabilidad “por unidad de valor” y permite obtener probabilidades integrando sobre intervalos; además, es la derivada de la CDF cuando esta es derivable. Para variables discretas no existe PDF como tal, sino una función de delta de diracs que representan una masa de probabilidad que asigna probabilidad a valores puntuales. En variables mixtas, la parte continua se modela con una PDF y la parte discreta con masas puntuales (saltos en la CDF)."
+            )
 
-        st.markdown("#### Preguntas y respuestas")
-        st.markdown(
-            "- **1. ¿Por qué la CDF de la VA discreta tiene forma de escalera?**  \n"
-            "  **R:** Porque la probabilidad se concentra en valores aislados, cada valor posible aporta un salto de magnitud igual a su probabilidad.\n\n"
-            "- **2. ¿Qué representa el área bajo la PDF en el caso continuo?**  \n"
-            "  **R:** Representa la probabilidad total, por definición, el área bajo la PDF en todo el eje real es igual a 1.\n\n"
-            "- **3. ¿Qué rasgo distingue visualmente a una VA mixta en su CDF?**  \n"
-            "  **R:** La presencia de un salto finito en un punto específico, superpuesto a una parte continua que crece suavemente."
-        )
+            st.markdown("#### Preguntas y respuestas")
+            st.markdown(
+                "- **1. ¿Por qué la CDF de la VA discreta tiene forma de escalera?**  \n"
+                "  **R:** Porque la probabilidad se concentra en valores aislados, cada valor posible aporta un salto de magnitud igual a su probabilidad.\n\n"
+                "- **2. ¿Qué representa el área bajo la PDF en el caso continuo?**  \n"
+                "  **R:** Representa la probabilidad total, por definición, el área bajo la PDF en todo el eje real es igual a 1.\n\n"
+                "- **3. ¿Qué rasgo distingue visualmente a una VA mixta en su CDF?**  \n"
+                "  **R:** La presencia de un salto finito en un punto específico, superpuesto a una parte continua que crece suavemente."
+            )
 
 
 def render_ejemplo3():
@@ -813,59 +964,68 @@ $$
         cdf_teo = norm.cdf(xs, loc=mu, scale=sigma)
 
         with col2:
-            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(7, 4))
+            fig = make_subplots(
+                rows=2,
+                cols=1,
+                shared_xaxes=False,
+                vertical_spacing=0.18,
+                subplot_titles=("PDF de la VA Gaussiana (ruido térmico)", "CDF de la VA Gaussiana"),
+            )
+            fig.add_trace(
+                go.Histogram(
+                    x=X,
+                    nbinsx=50,
+                    histnorm="probability density",
+                    name="Histograma (PDF empírica)",
+                    opacity=0.6,
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(x=xs, y=pdf_teo, mode="lines", name="PDF teórica", line=dict(dash="dash")),
+                row=1,
+                col=1,
+            )
+            fig.update_xaxes(title_text="x", range=[mu - XSPAN, mu + XSPAN], row=1, col=1)
+            fig.update_yaxes(title_text="f_X(x)", range=[0.0, 1.15 * np.max(pdf_teo)], row=1, col=1)
 
-            # PDF
-            ax1.hist(X, bins=50, density=True, alpha=0.6, label="Histograma (PDF empírica)")
-            ax1.plot(xs, pdf_teo, "k--", label="PDF teórica")
-            ax1.set_title("PDF de la VA Gaussiana (ruido térmico)")
-            ax1.set_xlabel("x")
-            ax1.set_ylabel("f_X(x)")
-            ax1.grid(True, linestyle=":")
-            ax1.legend()
+            fig.add_trace(
+                go.Scatter(x=Xs, y=cdf_emp, mode="lines", name="CDF empírica"),
+                row=2,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(x=xs, y=cdf_teo, mode="lines", name="CDF teórica", line=dict(color="red", dash="dash")),
+                row=2,
+                col=1,
+            )
+            fig.update_xaxes(title_text="x", range=[mu - XSPAN, mu + XSPAN], row=2, col=1)
+            fig.update_yaxes(title_text="F_X(x)", range=[0.0, 1.0], row=2, col=1)
 
-            # >>> Límites fijos en X (se mantienen)
-            ax1.set_xlim(mu - XSPAN, mu + XSPAN)
+            fig.update_layout(height=520, margin=dict(l=40, r=20, t=70, b=50), hovermode="x unified")
+            plot_theme = _get_plot_theme()
+            _apply_plot_theme(fig, plot_theme, font_size=12)
+            fig.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
-            # >>> Límite en Y ajustado a la PDF actual (para que se vea la campana)
-            ymax_pdf = 1.15 * np.max(pdf_teo)  # equivalente a 1.15*(1/(sqrt(2π)*sigma))
-            ax1.set_ylim(0.0, ymax_pdf)
+        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+            st.markdown(
+                r"Una variable aleatoria Gaussiana se define por dos parámetros: la **media m** y la **varianza "
+                r"σ^2**. Con estos dos valores queda determinada toda su distribución: la **PDF** (campana de Gauss) "
+                r"y la **CDF**, que acumula probabilidades P(X≤x). "
+                r"En la simulación se generan N realizaciones del ruido térmico y el histograma normalizado aproxima la "
+                r"**PDF empírica**. Al aumentar N, la forma empírica se estabiliza y se acerca a la **PDF teórica**."
+                r"La media representa el valor promedio alrededor del cual se distribuyen los posibles valores de la variable aleatoria, desplaza el centroide de la campana y la varianza es una medida de la dispersión de los valores que alcanza la variable aleatoria, una varianza grande significa que la VA probablemente tomará valores lejanos de la media y una varianza pequeña significa que una gran cantidad de valores de la variable aleatoria estarán cerca de la media. "
+            )
 
-            # CDF
-            ax2.plot(Xs, cdf_emp, label="CDF empírica")
-            ax2.plot(xs, cdf_teo, "r--", label="CDF teórica")
-            ax2.set_title("CDF de la VA Gaussiana")
-            ax2.set_xlabel("x")
-            ax2.set_ylabel("F_X(x)")
-            ax2.grid(True, linestyle=":")
-            ax2.legend()
-
-            # >>> Límites fijos para CDF
-            ax2.set_xlim(mu - XSPAN, mu + XSPAN)
-            ax2.set_ylim(0.0, 1.0)
-
-            fig.tight_layout()
-            st.pyplot(fig)
-
-        st.markdown("#### Explicación de la simulación")
-        st.markdown(
-            r"Una variable aleatoria Gaussiana se define por dos parámetros: la **media m** y la **varianza "
-            r"σ^2**. Con estos dos valores queda determinada toda su distribución: la **PDF** (campana de Gauss) "
-            r"y la **CDF**, que acumula probabilidades P(X≤x). "
-            r"En la simulación se generan N realizaciones del ruido térmico y el histograma normalizado aproxima la "
-            r"**PDF empírica**. Al aumentar N, la forma empírica se estabiliza y se acerca a la **PDF teórica**."
-            r"La media representa el valor promedio alrededor del cual se distribuyen los posibles valores de la variable aleatoria, desplaza el centroide de la campana y la varianza es una medida de la dispersión de los valores que alcanza la variable aleatoria, una varianza grande significa que la VA probablemente tomará valores lejanos de la media y una varianza pequeña significa que una gran cantidad de valores de la variable aleatoria estarán cerca de la media. "
-
-        )
-
-        st.markdown("#### Preguntas y respuestas")
-        st.markdown(
-            "- **1. ¿Qué efecto tiene incrementar la varianza sobre la forma de la campana de Gauss?**  \n"
-            "  **R:** La distribución se ensancha y el pico disminuye; las muestras quedan más dispersas alrededor de la media.\n\n"
-            "- **2. ¿Qué interpretación tiene el área bajo la PDF entre dos valores \(a\) y \(b\)?**  \n"
-            "  **R:** Representa la probabilidad de que el ruido tome valores en el intervalo [a,b], es decir, P(a ≤ X ≤ b).\n\n"
-
-        )
+            st.markdown("#### Preguntas y respuestas")
+            st.markdown(
+                "- **1. ¿Qué efecto tiene incrementar la varianza sobre la forma de la campana de Gauss?**  \n"
+                "  **R:** La distribución se ensancha y el pico disminuye; las muestras quedan más dispersas alrededor de la media.\n\n"
+                "- **2. ¿Qué interpretación tiene el área bajo la PDF entre dos valores \(a\) y \(b\)?**  \n"
+                "  **R:** Representa la probabilidad de que el ruido tome valores en el intervalo [a,b], es decir, P(a ≤ X ≤ b).\n\n"
+            )
 
 
 def render_ejemplo4():
@@ -977,37 +1137,49 @@ def render_ejemplo4():
             st.write(f"- Probabilidad a posteriori empírica ≈ **{pS1_R1_emp:.3f}**")
 
             # Gráfico simple: de todos los R=1, cuántos son TP vs FP
-            import matplotlib.pyplot as plt
-            fig, ax = plt.subplots(figsize=(7, 2.8))
-            ax.bar(["R=1 y había señal (TP)", "R=1 sin señal (FP)"], [TP, FP])
-            ax.set_ylabel("Cantidad de casos")
-            ax.set_title("Cuando el detector dice 'sí', ¿cuántas veces acierta?")
-            ax.grid(True, linestyle=":")
-            st.pyplot(fig)
+            fig = go.Figure(
+                data=[
+                    go.Bar(
+                        x=["R=1 y había señal (TP)", "R=1 sin señal (FP)"],
+                        y=[TP, FP],
+                        name="Casos",
+                    )
+                ]
+            )
+            fig.update_layout(
+                title="Cuando el detector dice 'sí', ¿cuántas veces acierta?",
+                xaxis_title="Resultado",
+                yaxis_title="Cantidad de casos",
+                height=320,
+                margin=dict(l=40, r=20, t=60, b=40),
+            )
+            plot_theme = _get_plot_theme()
+            _apply_plot_theme(fig, plot_theme, font_size=12)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        st.markdown("#### Explicación de la simulación")
-        st.markdown(
-            "En este ejemplo se separan dos preguntas que suelen confundirse. La primera describe el comportamiento del "
-            "detector: si en realidad no hay señal, ¿con qué probabilidad se equivoca y declara que sí la hay "
-            "(falsa alarma)? y si sí hay señal, ¿con qué probabilidad falla y no la detecta (pérdida)? Estas son "
-            "probabilidades condicionadas del tipo P(R|S), porque la condición es “la realidad”. "
-            "La segunda pregunta es la más práctica: una vez que el detector decidió “sí”, ¿qué tan confiable es esa "
-            "decisión?, es decir P(S|R). Ahí entra Bayes, que combina el desempeño del detector con la frecuencia real "
-            "con la que aparece la señal; por eso, si la señal es poco frecuente, un “sí” puede no ser tan convincente "
-            "aunque el detector tenga pocos errores."
-        )
+        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+            st.markdown(
+                "En este ejemplo se separan dos preguntas que suelen confundirse. La primera describe el comportamiento del "
+                "detector: si en realidad no hay señal, ¿con qué probabilidad se equivoca y declara que sí la hay "
+                "(falsa alarma)? y si sí hay señal, ¿con qué probabilidad falla y no la detecta (pérdida)? Estas son "
+                "probabilidades condicionadas del tipo P(R|S), porque la condición es “la realidad”. "
+                "La segunda pregunta es la más práctica: una vez que el detector decidió “sí”, ¿qué tan confiable es esa "
+                "decisión?, es decir P(S|R). Ahí entra Bayes, que combina el desempeño del detector con la frecuencia real "
+                "con la que aparece la señal; por eso, si la señal es poco frecuente, un “sí” puede no ser tan convincente "
+                "aunque el detector tenga pocos errores."
+            )
 
-        st.markdown("#### Preguntas y respuestas")
-        st.markdown(
-            "- **1. ¿Por qué la probabilidad de ‘hay señal dado que detectó’ puede ser baja aunque el detector sea bueno?**  \n"
-            "  **R:** Porque si ‘hay señal’ ocurre muy pocas veces, la mayoría de los ‘sí’ pueden venir de falsas alarmas, "
-            "aunque la tasa de falsa alarma sea pequeña.\n\n"
-            "- **2. ¿Qué parámetro cambia más la credibilidad del ‘sí’?**  \n"
-            "  **R:** La probabilidad de que realmente haya señal (a priori) y la tasa de falsa alarma; ambos afectan fuertemente a Bayes.\n\n"
-            "- **3. ¿Cómo se conecta esto con un receptor digital?**  \n"
-            "  **R:** ‘Hay señal’ puede interpretarse como ‘se transmitió el bit 1’, ‘detectó señal’ como ‘el receptor decidió 1’; "
-            "las falsas alarmas y pérdidas son errores de decisión, y Bayes es la base de detectores óptimos."
-        )
+            st.markdown("#### Preguntas y respuestas")
+            st.markdown(
+                "- **1. ¿Por qué la probabilidad de ‘hay señal dado que detectó’ puede ser baja aunque el detector sea bueno?**  \n"
+                "  **R:** Porque si ‘hay señal’ ocurre muy pocas veces, la mayoría de los ‘sí’ pueden venir de falsas alarmas, "
+                "aunque la tasa de falsa alarma sea pequeña.\n\n"
+                "- **2. ¿Qué parámetro cambia más la credibilidad del ‘sí’?**  \n"
+                "  **R:** La probabilidad de que realmente haya señal (a priori) y la tasa de falsa alarma; ambos afectan fuertemente a Bayes.\n\n"
+                "- **3. ¿Cómo se conecta esto con un receptor digital?**  \n"
+                "  **R:** ‘Hay señal’ puede interpretarse como ‘se transmitió el bit 1’, ‘detectó señal’ como ‘el receptor decidió 1’; "
+                "las falsas alarmas y pérdidas son errores de decisión, y Bayes es la base de detectores óptimos."
+            )
 
 
 def render_ejemplo5():
@@ -1127,58 +1299,79 @@ def render_ejemplo5():
             st.write(f"BER teórico aproximado ≈ {BER_teo_aprox:.4f}, referencia")
 
             # Histograma de Y condicionado
-            fig, ax = plt.subplots(figsize=(7, 3))
             Y0 = Y[S_bits == 0]
             Y1 = Y[S_bits == 1]
-            ax.hist(Y0, bins=40, density=True, alpha=0.5, label="Y | S=0")
-            ax.hist(Y1, bins=40, density=True, alpha=0.5, label="Y | S=1")
-            ax.axvline(gamma, color="k", linestyle="--", label="Umbral MAP")
-            ax.set_title("Distribuciones de Y condicionadas y umbral MAP")
-            ax.set_xlabel("Y")
-            ax.set_ylabel("Densidad aproximada")
-            ax.grid(True, linestyle=":")
-            ax.legend()
-            st.pyplot(fig)
+            fig = go.Figure()
+            fig.add_trace(
+                go.Histogram(
+                    x=Y0,
+                    nbinsx=40,
+                    histnorm="probability density",
+                    opacity=0.55,
+                    name="Y | S=0",
+                )
+            )
+            fig.add_trace(
+                go.Histogram(
+                    x=Y1,
+                    nbinsx=40,
+                    histnorm="probability density",
+                    opacity=0.55,
+                    name="Y | S=1",
+                )
+            )
+            fig.add_vline(x=gamma, line=dict(color="black", dash="dash"), annotation_text="Umbral MAP")
+            fig.update_layout(
+                title="Distribuciones de Y condicionadas y umbral MAP",
+                xaxis_title="Y",
+                yaxis_title="Densidad aproximada",
+                barmode="overlay",
+                height=340,
+                margin=dict(l=40, r=20, t=60, b=40),
+            )
+            plot_theme = _get_plot_theme()
+            _apply_plot_theme(fig, plot_theme, font_size=12)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        st.markdown("#### Explicación de la simulación")
-        st.markdown(
-            "En BPSK el transmisor representa el bit **0** con el símbolo -A y el bit **1** con +A. "
-            "El canal agrega ruido Gaussiano, por eso el receptor no ve una observación "
-            "Y que queda “corrida” por el ruido: Y = S + n. Como n es Gaussiano, entonces la distribución "
-            "de Y condicionado al símbolo transmitido también es Gaussiana: aparece una campana centrada en -A "
-            "para Y|S=0 y otra centrada en +A para Y|S=1. Esas dos PDF condicionadas, f{Y|S}(y|0) y "
-            "f{Y|S}(y|1), resumen estadísticamente cómo se ve cada símbolo a la salida del canal.\n\n"
-            "El detector **MAP** (máxima probabilidad a posteriori) responde a la pregunta más práctica del receptor: "
-            "dado un valor observado (y), **¿cuál símbolo fue más probable que se haya enviado?** Matemáticamente compara "
-            "las probabilidades a posteriori P(S=1|Y=y) y P(S=0|Y=y). Como esas cantidades no se calculan ‘a ojo’, "
-            "se usan las PDF condicionadas y las probabilidades a priori mediante Bayes: la evidencia del canal viene en "
-            "\(f{Y|S}(y|s) y la tendencia de transmisión viene en P(S=s). En otras palabras, MAP combina lo que "
-            "miden los datos con lo que ya se sabía antes de observar (Y).\n\n"
-            "En este modelo Gaussiano, esa comparación se reduce a un **umbral** \(\gamma\). El umbral es el punto sobre el "
-            "eje \(Y\) donde el receptor cambia de decisión: valores mayores que \(\gamma\) favorecen \(S=1\) y valores menores "
-            "favorecen \(S=0\). Su significado es muy concreto: es la frontera que separa la región donde ‘es más creíble’ la "
-            "hipótesis \(S=1\) de la región donde ‘es más creíble’ \(S=0\).\n\n"
-            "Cuando los símbolos son equiprobables, \(P(S=1)=P(S=0)=0.5\), el umbral cae en el centro y el detector se vuelve "
-            "de **máxima verosimilitud (ML)**: decide únicamente por cercanía a \(\pm A\), típicamente con \(\gamma\) cerca de 0. "
-            "En cambio, si \(P(S=1)\) es mayor que \(P(S=0)\), el umbral se desplaza para **favorecer al símbolo más frecuente**: "
-            "acepta \(S=1\) con observaciones menos “contundentes”, porque a priori es más probable que ese símbolo haya sido enviado. "
-            "Además, el valor de \(\sigma^2\) también afecta a \(\gamma\): con más ruido las campanas se traslapan más y el detector "
-            "necesita ajustar la frontera para minimizar el error promedio.\n\n"
-            "El histograma muestra justamente ese traslape: las barras de \(Y|S=0\) y \(Y|S=1\) se enciman por culpa del ruido. "
-            "Cada vez que una muestra cae del ‘lado equivocado’ del umbral ocurre un error de decisión, y al contarlos se estima el BER."
-        )
+        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+            st.markdown(
+                "En BPSK el transmisor representa el bit **0** con el símbolo -A y el bit **1** con +A. "
+                "El canal agrega ruido Gaussiano, por eso el receptor no ve una observación "
+                "Y que queda “corrida” por el ruido: Y = S + n. Como n es Gaussiano, entonces la distribución "
+                "de Y condicionado al símbolo transmitido también es Gaussiana: aparece una campana centrada en -A "
+                "para Y|S=0 y otra centrada en +A para Y|S=1. Esas dos PDF condicionadas, f{Y|S}(y|0) y "
+                "f{Y|S}(y|1), resumen estadísticamente cómo se ve cada símbolo a la salida del canal.\n\n"
+                "El detector **MAP** (máxima probabilidad a posteriori) responde a la pregunta más práctica del receptor: "
+                "dado un valor observado (y), **¿cuál símbolo fue más probable que se haya enviado?** Matemáticamente compara "
+                "las probabilidades a posteriori P(S=1|Y=y) y P(S=0|Y=y). Como esas cantidades no se calculan ‘a ojo’, "
+                "se usan las PDF condicionadas y las probabilidades a priori mediante Bayes: la evidencia del canal viene en "
+                "\(f{Y|S}(y|s) y la tendencia de transmisión viene en P(S=s). En otras palabras, MAP combina lo que "
+                "miden los datos con lo que ya se sabía antes de observar (Y).\n\n"
+                "En este modelo Gaussiano, esa comparación se reduce a un **umbral** \(\gamma\). El umbral es el punto sobre el "
+                "eje \(Y\) donde el receptor cambia de decisión: valores mayores que \(\gamma\) favorecen \(S=1\) y valores menores "
+                "favorecen \(S=0\). Su significado es muy concreto: es la frontera que separa la región donde ‘es más creíble’ la "
+                "hipótesis \(S=1\) de la región donde ‘es más creíble’ \(S=0\).\n\n"
+                "Cuando los símbolos son equiprobables, \(P(S=1)=P(S=0)=0.5\), el umbral cae en el centro y el detector se vuelve "
+                "de **máxima verosimilitud (ML)**: decide únicamente por cercanía a \(\pm A\), típicamente con \(\gamma\) cerca de 0. "
+                "En cambio, si \(P(S=1)\) es mayor que \(P(S=0)\), el umbral se desplaza para **favorecer al símbolo más frecuente**: "
+                "acepta \(S=1\) con observaciones menos “contundentes”, porque a priori es más probable que ese símbolo haya sido enviado. "
+                "Además, el valor de \(\sigma^2\) también afecta a \(\gamma\): con más ruido las campanas se traslapan más y el detector "
+                "necesita ajustar la frontera para minimizar el error promedio.\n\n"
+                "El histograma muestra justamente ese traslape: las barras de \(Y|S=0\) y \(Y|S=1\) se enciman por culpa del ruido. "
+                "Cada vez que una muestra cae del ‘lado equivocado’ del umbral ocurre un error de decisión, y al contarlos se estima el BER."
+            )
 
-        st.markdown("#### Preguntas y respuestas")
-        st.markdown(
-            "- **1. ¿Qué pasa con el BER cuando aumenta la SNR?**  \n"
-            "  **R:** Disminuye, porque la separación entre las distribuciones de \(Y|S=0\) y \(Y|S=1\) es mayor en comparación con la desviación estándar del ruido.\n\n"
-            "- **2. ¿Por qué el umbral MAP no siempre es cero?**  \n"
-            "  **R:** Porque cuando \(P(S=0) \neq P(S=1)\), es óptimo desplazar el umbral hacia el símbolo menos probable, "
-            "de manera que se reduzca la probabilidad de confundir el símbolo más frecuente.\n\n"
-            "- **3. ¿Cómo se relaciona este ejemplo con el rendimiento de sistemas BPSK en canales AWGN?**  \n"
-            "  **R:** El ejemplo reproduce el modelo clásico de BPSK sobre canal AWGN, donde el BER se expresa en función de la SNR "
-            "y se evalúa típicamente mediante la función Q(⋅). que mide la cola derecha de una distribución Gaussiana estándar"
-        )
+            st.markdown("#### Preguntas y respuestas")
+            st.markdown(
+                "- **1. ¿Qué pasa con el BER cuando aumenta la SNR?**  \n"
+                "  **R:** Disminuye, porque la separación entre las distribuciones de \(Y|S=0\) y \(Y|S=1\) es mayor en comparación con la desviación estándar del ruido.\n\n"
+                "- **2. ¿Por qué el umbral MAP no siempre es cero?**  \n"
+                "  **R:** Porque cuando \(P(S=0) \neq P(S=1)\), es óptimo desplazar el umbral hacia el símbolo menos probable, "
+                "de manera que se reduzca la probabilidad de confundir el símbolo más frecuente.\n\n"
+                "- **3. ¿Cómo se relaciona este ejemplo con el rendimiento de sistemas BPSK en canales AWGN?**  \n"
+                "  **R:** El ejemplo reproduce el modelo clásico de BPSK sobre canal AWGN, donde el BER se expresa en función de la SNR "
+                "y se evalúa típicamente mediante la función Q(⋅). que mide la cola derecha de una distribución Gaussiana estándar"
+            )
 
 
 # =========================================================
