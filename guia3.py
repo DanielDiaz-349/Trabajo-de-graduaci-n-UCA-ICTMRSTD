@@ -12,7 +12,6 @@ import datetime
 import importlib.util
 import io
 import numpy as np
-import matplotlib.pyplot as plt
 import streamlit as st
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -1429,15 +1428,37 @@ def render_dinamica1():
     st.markdown(f"**Caso generado:** experimento Bernoulli con probabilidad teórica **p = {p:.2f}**, con **N = {N}** repeticiones.")
 
     # Gráfica: frecuencia relativa acumulada
-    fig, ax = plt.subplots(figsize=(7, 3.6))
-    ax.plot(np.arange(1, N + 1), fr)
-    ax.axhline(p, linestyle="--")
-    ax.set_xlabel("Número de ensayos n")
-    ax.set_ylabel("Frecuencia relativa acumulada $f_R(n)$")
-    ax.set_title("Convergencia de la frecuencia relativa")
-    ax.grid(True, linestyle=":")
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    theme = _get_plot_theme()
+    x_vals = np.arange(1, N + 1)
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=x_vals,
+            y=fr,
+            mode="lines",
+            name="f_R(n)",
+            line=dict(color="#2a9d8f", width=2),
+            hovertemplate="n=%{x}<br>f_R(n)=%{y:.3f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[1, N],
+            y=[p, p],
+            mode="lines",
+            name=f"p={p:.2f}",
+            line=dict(color="#e76f51", dash="dash"),
+            hovertemplate="p=%{y:.2f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title="Convergencia de la frecuencia relativa",
+        xaxis_title="Número de ensayos n",
+        yaxis_title="Frecuencia relativa acumulada f_R(n)",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
+    )
+    _apply_plot_theme(fig, theme)
+    st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("Responde **2 preguntas** basándote en la gráfica y en la definición de frecuencia relativa.")
 
@@ -1490,18 +1511,31 @@ def render_dinamica2():
         f"**p = {p:.2f}**."
     )
 
-    # Gráfica: matriz de probabilidades condicionales como "heatmap" simple
-    fig, ax = plt.subplots(figsize=(5.5, 3.6))
-    im = ax.imshow(P, aspect="auto")
-    ax.set_xticks([0, 1], labels=["Y=0", "Y=1"])
-    ax.set_yticks([0, 1], labels=["X=0", "X=1"])
-    ax.set_title("Matriz de probabilidad condicional $P(Y|X)$")
-    for i in range(2):
-        for j in range(2):
-            ax.text(j, i, f"{P[i, j]:.2f}", ha="center", va="center")
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    # Gráfica: matriz de probabilidades condicionales como "heatmap" interactivo
+    theme = _get_plot_theme()
+    labels_x = ["Y=0", "Y=1"]
+    labels_y = ["X=0", "X=1"]
+    text_vals = [[f"{P[i, j]:.2f}" for j in range(2)] for i in range(2)]
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=P,
+            x=labels_x,
+            y=labels_y,
+            text=text_vals,
+            texttemplate="%{text}",
+            textfont=dict(color=theme["font_color"]),
+            colorscale="Viridis",
+            hovertemplate="Entrada %{y}<br>Salida %{x}<br>P=%{z:.2f}<extra></extra>",
+            colorbar=dict(title="P(Y|X)", tickfont=dict(color=theme["font_color"])),
+        )
+    )
+    fig.update_layout(
+        title="Matriz de probabilidad condicional P(Y|X)",
+        xaxis_title="Salida Y",
+        yaxis_title="Entrada X",
+    )
+    _apply_plot_theme(fig, theme)
+    st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("Responde **2 preguntas** usando el concepto de probabilidad condicional.")
 
@@ -1577,18 +1611,57 @@ def render_dinamica3():
     p0 = pi0 * _g3_gaussian_pdf(x, -A, sigma)
     p1 = pi1 * _g3_gaussian_pdf(x, +A, sigma)
 
-    fig, ax = plt.subplots(figsize=(7, 3.6))
-    ax.plot(x, p0, label=r"$\pi_0\,p(r|0)$")
-    ax.plot(x, p1, label=r"$\pi_1\,p(r|1)$")
-    ax.axvline(gamma, linestyle="--", label=r"Umbral $\gamma$")
-    ax.axvline(r0, linestyle=":", label=f"Muestra r={r0:.2f}")
-    ax.set_xlabel("r")
-    ax.set_ylabel("Densidad ponderada")
-    ax.set_title("Criterio MAP: comparación de densidades ponderadas")
-    ax.grid(True, linestyle=":")
-    ax.legend()
-    fig.tight_layout(pad=2.0)
-    st.pyplot(fig)
+    theme = _get_plot_theme()
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=p0,
+            mode="lines",
+            name=r"π₀ p(r|0)",
+            line=dict(color="#3a86ff", width=2),
+            hovertemplate="r=%{x:.2f}<br>π₀ p(r|0)=%{y:.4f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=p1,
+            mode="lines",
+            name=r"π₁ p(r|1)",
+            line=dict(color="#ff006e", width=2),
+            hovertemplate="r=%{x:.2f}<br>π₁ p(r|1)=%{y:.4f}<extra></extra>",
+        )
+    )
+    max_y = float(max(p0.max(), p1.max()) * 1.1)
+    fig.add_trace(
+        go.Scatter(
+            x=[gamma, gamma],
+            y=[0.0, max_y],
+            mode="lines",
+            name="Umbral γ",
+            line=dict(color="#6c757d", dash="dash"),
+            hovertemplate="γ=%{x:.2f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[r0, r0],
+            y=[0.0, max_y],
+            mode="lines",
+            name=f"Muestra r={r0:.2f}",
+            line=dict(color="#00b4d8", dash="dot"),
+            hovertemplate="r=%{x:.2f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title="Criterio MAP: comparación de densidades ponderadas",
+        xaxis_title="r",
+        yaxis_title="Densidad ponderada",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5),
+    )
+    _apply_plot_theme(fig, theme)
+    st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("Responde **2 preguntas** usando el umbral mostrado en la figura.")
 
