@@ -113,7 +113,8 @@ Analizar diferentes fuentes de ruido y los efectos que producen sobre señales e
 - Proporcionar al estudiante herramientas de aprendizaje y retroalimentación
 """
 
-INTRO_FULL_TEXT = r"""
+NTRO_FULL_TEXT = r"""
+
 En todo sistema de telecomunicaciones existe un elemento inevitable: la incertidumbre. Dicha incertidumbre proviene tanto de la naturaleza aleatoria de la información como de la presencia permanente de perturbaciones indeseadas agregadas a una señal, denominadas ruido. Por ello, el análisis y diseño de sistemas modernos de comunicación exige un enfoque basado en probabilidad y procesos aleatorios. A partir de la década de 1940, se adoptaron formalmente métodos probabilísticos para optimizar el desempeño de sistemas de comunicación.
 
 **Modelo general de un sistema de comunicación**
@@ -121,36 +122,143 @@ En todo sistema de telecomunicaciones existe un elemento inevitable: la incertid
 Un sistema de comunicación típico está compuesto por transmisor, canal y receptor, junto con los transductores de entrada y salida. El transductor convierte magnitudes físicas en señales eléctricas, el transmisor modula y adapta la señal al canal, el canal transporta la señal con pérdidas e interferencias, y el receptor intenta recuperar la información original compensando distorsiones generadas a lo largo del trayecto.
 
 La calidad con la que la señal llega al receptor depende de dos factores principales:
+
 - Las características del canal.
 - Las perturbaciones añadidas a la señal, entre ellas el ruido y la distorsión por no linealidad.
 
-**Naturaleza y clasificación del ruido**
-El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado o no correlacionado.
+**Canales de transmisión**
 
-**Ruido blanco aditivo gaussiano (AWGN)**
-Es un modelo ampliamente utilizado: aditivo, blanco y gaussiano.
+Existen muchos tipos de canales de transmisión, entre los más comunes se encuentran: canales de propagación de ondas electromagnéticas, canales de propagación de ondas electromagnéticas guiados y enlaces ópticos. 
+
+Canales de propagación de ondas electromagnéticas
+
+El principio básico involucrado es el acoplamiento de la energía electromagnética con un medio de propagación, el cual puede ser el espacio libre o la atmósfera, mediante un elemento de radiación conocido como antena. 
+
+Canales guiados y enlaces opticos
+
+Incluyen par trenzado, cables coaxiales, guías de onda metálicas y fibras ópticas. En estos medios la señal permanece confinada físicamente y la propagación depende de parámetros eléctricos del material como permitividad y permeabilidad. Estos canales se emplean donde se requiere alta capacidad, baja atenuación o inmunidad al ruido externo.
+
+**Naturaleza y clasificación del ruido**
+
+El ruido se define como una señal aleatoria que se adhiere a la señal original e introduce incertidumbre en la detección. Puede ser correlacionado (producto de la no linealidad y dependiente de la señal) o no correlacionado (presente incluso sin señal).
+
+Ruido no correlacionado
+
+Incluye las fuentes externas (atmosféricas, extraterrestres e industriales) y las internas generadas por dispositivos electrónicos (ruido de disparo, de tiempo de tránsito y ruido térmico, este ultimo es considerado el más importante por su carácter aditivo y su presencia en todas las frecuencias).
+
+Ruido correlacionado
+
+Resulta de la no linealidad de los dispositivos e incluye:
+
+- Distorsión armónica, donde aparecen armónicas de la señal fundamental.
+- Intermodulación, donde múltiples señales interactúan dentro de un dispositivo no lineal generando nuevas frecuencias.
+
+La intermodulación es especialmente crítica en sistemas multicanal, pues produce términos que pueden caer dentro del ancho de banda útil e interferir directamente con la señal deseada.
+
+**Distorsión por intermodulación**
+
+La distorsión por intermodulación ocurre cuando dos o más señales de diferentes frecuencias atraviesan un dispositivo no lineal, como un amplificador o mezclador, produciendo componentes de frecuencia adicionales que son sumas y diferencias de las frecuencias originales y sus múltiplos armónicos. Estas nuevas frecuencias llamadas productos de intermodulación no estaban presentes en la entrada y pueden caer dentro del ancho de banda útil, interfiriendo con la señal original o con canales adyacentes.
+
+Se introduce el termino coeficiente cubico o k3 que es un parámetro que aparece en el modelo polinómico utilizado para describir la no linealidad de un amplificador o cualquier dispositivo activo. Es fundamental para entender la intermodulación de tercer orden (IM3), que es la forma más problemática de distorsión en sistemas de RF y comunicaciones.
+
+Cuando dos señales de entrada de frecuencias f1 y f2 pasan por un dispositivo no lineal, aparecen nuevas frecuencias dadas por la **ecuación (1)**
+
+$$
+f_{IM} = m f_1 \pm n f_2 \tag{1}
+$$
+
+
+
+Donde:
+
+m y n son enteros positivos
+la suma o resta da lugar a distintas combinaciones
+los terminos m+n=k se llaman productos de intermodulación de orden k
+
+Los productos de tecer orden son los más problematicos porque sus frecuencias son muy cercanas a las señales originales, lo que los hace difíciles de eliminar con filtros. 
+
+Por ejemplo, un amplificador es un dispositivo no lineal de tercer orden, los productos de intermodulación son: 
+
+ 2f1-f2, 2f2-f1, 3f1, 3f2, 2f1+f2}, 2f2+f1.
+
+
+**Adición de ruido a una señal**
+
+En un sistema real, el canal no solo atenúa y distorsiona la señal sino que introduce ruido. La señal recibida puede representarse en la **ecuación (2)**:
+
+$$
+r(t) = s(t) + n(t) \tag{2}
+$$
+
+
+
+donde:
+
+- s(t) es la señal transmitida posiblemente distorsionada
+- n(t) corresponde al ruido agregado por fuentes internas y externas.
+
+**Ruido blanco aditivo gaussiano**
+
+Para análisis y diseño, una de las aproximaciones más utilizadas es el modelo AWGN (Additive White Gaussian Noise), que representa un tipo de ruido:
+
+- Aditivo: se suma linealmente a la señal.
+- Blanco: tiene potencia constante en todas las frecuencias.
+- Gaussiano: su amplitud sigue una distribución normal.
+
+El AWGN modela adecuadamente:
+
+- Ruido térmico en componentes electrónicos.
+- Ruido de fondo en canales de radio.
+- El comportamiento agregado de muchas fuentes pequeñas e independientes.
+
+Aunque simplificado, este modelo es ampliamente aceptado en el diseño teórico de moduladores y detectores digitales y analógicos por su precisión estadística y su facilidad matemática.
 
 **Relación Señal-Ruido (SNR)**
-\[
-\mathrm{SNR}=\frac{P_s}{P_n}, \quad
-\mathrm{SNR}_{\mathrm{dB}}=10\log_{10}\left(\frac{P_s}{P_n}\right)
-\]
 
-**BER**
-Es la razón entre bits erróneos y bits totales recibidos.
+El desempeño de un sistema en presencia de ruido suele medirse con la relación señal-ruido (SNR) definido en la **ecuación (3)**:
+
+$$
+\mathrm{SNR} = \frac{P_s}{P_n} \tag{3}
+$$
+
+
+donde Ps es la potencia de la señal útil y Pn es la potencia del ruido.
+Se expresa en decibelos en la **ecuación (4)**: 
+
+$$
+\mathrm{SNR}_{\mathrm{dB}} = 10\log_{10}\!\left(\frac{P_s}{P_n}\right) \tag{4}
+$$
+
+Un SNR alto implica que el receptor puede distinguir adecuadamente la señal del ruido, reduciendo errores en detección. Por el contrario, un SNR bajo aumenta la probabilidad de error y limita el ancho de banda útil del canal.
+
+El SNR está directamente relacionado con:
+
+- La distancia de transmisión.
+- El tipo de canal.
+- La potencia transmitida.
+- Las propiedades del ruido generado en el sistema.
+
+**Tasa de error de bit (BER)**
+
+Es la razón entre el número de bits erróneos y el número total de bits recibidos o visto de otra forma, la probabilidad de que un bit recibido sea incorrecto
+
+
+BER= número de bits erróneos / total de bits recibidos 
+
+
+**La calidad de la comunicación depende del equilibrio entre:**
+
+- El canal.
+- Las fuentes de ruido.
+- Las métricas de desempeño.
+- La capacidad del receptor para filtrar y detectar señales distorsionadas.
+
 """
 
 MATERIALES_TEXT = """
 Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
 
-- Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
-- Python instalado (versión 3.8 o superior recomendada).
-- Un entorno de desarrollo como Visual Studio Code o PyCharm.
-- Bibliotecas:
-  - numpy
-  - matplotlib
-  - streamlit
-  - scipy (opcional)
+- UDispositivo con acceso a internet
 """
 
 CONCLUSIONES_TEXT = """ - El estudio de los sistemas de telecomunicaciones demuestra que la calidad de transmisión depende fundamentalmente de la interacción entre el canal, las fuentes de ruido y los efectos derivados de la no linealidad de los dispositivos. La guía permitió analizar y simular cómo el ruido AWGN, la atenuación del canal y la intermodulación alteran la forma de onda original y afectan directamente la capacidad del receptor para recuperar la información enviada, destacando la importancia del SNR como parámetro clave en la detección confiable de señales digitales.
@@ -1468,7 +1576,7 @@ def render_dinamicas_guia1():
         score2 = {3: 10.0, 2: 8.0, 1: 6.0, 0: 0.0}.get(c2, 0.0)
         nota_global = round((score1 + score2) / 2.0, 2)
         state["nota_global"] = nota_global
-        st.success(f"Nota global calculada: {nota_global}/10")
+        
 
         # Lista que alimenta el PDF (cada dinámica incluye su nota)
         resultados = [
@@ -1521,25 +1629,16 @@ def render_dinamicas_guia1():
                 commit_message=commit_msg,
             )
 
-            # Descarga opcional (en memoria, sin escribir archivos en disco)
-            st.download_button(
-                "Descargar PDF (copia)",
-                data=pdf_bytes,
-                file_name=pdf_filename,
-                mime="application/pdf",
-                key="g1_download_pdf_after_submit",
-            )
-
             if ok:
                 state["submitted"] = True
                 state["nota_dyn1"] = score1
                 state["nota_dyn2"] = score2
                 state["nota_global"] = nota_global
 
-                st.success(f"¡Listo! Respuestas enviadas. Nota global registrada: {nota_global:.2f}/10")
+                
                 if isinstance(info, dict) and info.get("html_url"):
                     st.link_button("Ver archivo en GitHub", info["html_url"])
-                st.write("Ruta en el repositorio:", repo_path)
+                st.write("Verifica tu nota con el catedratico o el instructor encargado", repo_path)
             else:
                 st.error(f"No se pudo subir el PDF: {info}")
 
