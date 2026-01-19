@@ -1263,10 +1263,10 @@ def render_ejemplo4():
             vertical_spacing=0.1,
             subplot_titles=(
                 "Entrada en el tiempo",
+                "Salida en el tiempo",
                 "Espectro de entrada",
                 "Respuesta en frecuencia del filtro",
                 "Espectro de salida",
-                "Salida en el tiempo",
             ),
         )
         spectrum_colors = {
@@ -1289,6 +1289,17 @@ def render_ejemplo4():
             row=1,
             col=1,
         )
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=y_time,
+                mode="lines",
+                name="y(t)",
+                line=dict(color=time_colors["output"], width=2),
+            ),
+            row=2,
+            col=1,
+        )
         x_lines, y_lines = _build_stem_lines(fpos, Xmag)
         fig.add_trace(
             go.Scatter(
@@ -1299,7 +1310,7 @@ def render_ejemplo4():
                 hoverinfo="skip",
                 showlegend=False,
             ),
-            row=2,
+            row=3,
             col=1,
         )
         fig.add_trace(
@@ -1310,7 +1321,7 @@ def render_ejemplo4():
                 name="|X(f)|",
                 marker=dict(color=spectrum_colors["input"], size=6),
             ),
-            row=2,
+            row=3,
             col=1,
         )
         h_lines_x, h_lines_y = _build_stem_lines(fpos, Hmag)
@@ -1323,7 +1334,7 @@ def render_ejemplo4():
                 hoverinfo="skip",
                 showlegend=False,
             ),
-            row=3,
+            row=4,
             col=1,
         )
         fig.add_trace(
@@ -1334,7 +1345,7 @@ def render_ejemplo4():
                 name="|H(f)|",
                 marker=dict(color=spectrum_colors["filter"], size=6),
             ),
-            row=3,
+            row=4,
             col=1,
         )
         y_lines_x, y_lines_y = _build_stem_lines(fpos, Ymag)
@@ -1347,7 +1358,7 @@ def render_ejemplo4():
                 hoverinfo="skip",
                 showlegend=False,
             ),
-            row=4,
+            row=5,
             col=1,
         )
         fig.add_trace(
@@ -1358,31 +1369,20 @@ def render_ejemplo4():
                 name="|Y(f)|",
                 marker=dict(color=spectrum_colors["output"], size=6),
             ),
-            row=4,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=t,
-                y=y_time,
-                mode="lines",
-                name="y(t)",
-                line=dict(color=time_colors["output"], width=2),
-            ),
             row=5,
             col=1,
         )
 
         fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, title_standoff=18)
+        fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1, title_standoff=18)
         fig.update_xaxes(title_text="Frecuencia (Hz)", row=3, col=1, title_standoff=18)
         fig.update_xaxes(title_text="Frecuencia (Hz)", row=4, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Tiempo (s)", row=5, col=1, title_standoff=18)
+        fig.update_xaxes(title_text="Frecuencia (Hz)", row=5, col=1, title_standoff=18)
         fig.update_yaxes(title_text="Amplitud", row=1, col=1)
-        fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
-        fig.update_yaxes(title_text="|H(f)|", row=3, col=1)
-        fig.update_yaxes(title_text="|Y(f)|", row=4, col=1)
-        fig.update_yaxes(title_text="Amplitud", row=5, col=1)
+        fig.update_yaxes(title_text="Amplitud", row=2, col=1)
+        fig.update_yaxes(title_text="|X(f)|", row=3, col=1)
+        fig.update_yaxes(title_text="|H(f)|", row=4, col=1)
+        fig.update_yaxes(title_text="|Y(f)|", row=5, col=1)
 
         fig.update_layout(
             height=1050,
