@@ -1630,6 +1630,9 @@ def render_dinamicas_guia1():
         sim2 = state["dyn2"]["sim"]
         freq = sim2["freq"]; X_in = sim2["X_in"]; X_out = sim2["X_out"]
         fmax_plot = max(key2["f1"], key2["f2"]) * 4.0
+        max_mag = max(np.max(X_in), np.max(X_out), 1e-12)
+        X_in_norm = X_in / max_mag
+        X_out_norm = X_out / max_mag
 
         fig2 = make_subplots(
             rows=2,
@@ -1638,12 +1641,12 @@ def render_dinamicas_guia1():
             vertical_spacing=0.12,
             subplot_titles=("Espectro antes de la no linealidad", "Espectro después de la no linealidad"),
         )
-        fig2.add_trace(go.Scattergl(x=freq, y=X_in + 1e-12, mode="lines"), row=1, col=1)
-        fig2.add_trace(go.Scattergl(x=freq, y=X_out + 1e-12, mode="lines"), row=2, col=1)
+        fig2.add_trace(go.Scattergl(x=freq, y=X_in_norm, mode="lines"), row=1, col=1)
+        fig2.add_trace(go.Scattergl(x=freq, y=X_out_norm, mode="lines"), row=2, col=1)
         fig2.update_xaxes(range=[0, fmax_plot], row=1, col=1)
         fig2.update_xaxes(range=[0, fmax_plot], title_text="Frecuencia (Hz)", row=2, col=1)
-        fig2.update_yaxes(type="log", title_text="Magnitud (u.a.)", row=1, col=1)
-        fig2.update_yaxes(type="log", title_text="Magnitud (u.a.)", row=2, col=1)
+        fig2.update_yaxes(range=[0, 1.05], title_text="Magnitud (u.a.)", row=1, col=1)
+        fig2.update_yaxes(range=[0, 1.05], title_text="Magnitud (u.a.)", row=2, col=1)
         fig2.update_layout(
             height=650,
             margin=dict(l=40, r=20, t=90, b=60),
@@ -1666,10 +1669,11 @@ def render_dinamicas_guia1():
         for f_c, lab in labels:
             if 0 < f_c < fmax_plot:
                 idx = np.argmin(np.abs(freq - f_c))
-                amp = X_out[idx] + 1e-12
+                amp = X_out_norm[idx]
+                label_y = min(amp * 1.05, 1.02)
                 fig2.add_annotation(
                     x=f_c,
-                    y=amp * 1.5,
+                    y=label_y,
                     text=lab,
                     showarrow=False,
                     textangle=90,
@@ -1681,10 +1685,11 @@ def render_dinamicas_guia1():
         for lab, f_imd in imd_freqs.items():
             if 0 < f_imd < fmax_plot:
                 idx = np.argmin(np.abs(freq - f_imd))
-                amp = X_out[idx] + 1e-12
+                amp = X_out_norm[idx]
+                label_y = min(amp * 1.05, 1.02)
                 fig2.add_annotation(
                     x=f_imd,
-                    y=amp * 1.5,
+                    y=label_y,
                     text=lab,
                     showarrow=False,
                     textangle=90,
