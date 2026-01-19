@@ -1134,19 +1134,6 @@ def render_ejemplo2():
                     textangle=90,
                 )
 
-        for label, f_imd in imd_freqs.items():
-            if 0 < f_imd < freq_plot[-1]:
-                idx = np.argmin(np.abs(freq_plot - f_imd))
-                amp = X_in_plot[idx]
-                fig1.add_annotation(
-                    x=freq_plot[idx],
-                    y=_label_y(amp, y_min_in, y_max_in),
-                    text=label,
-                    showarrow=False,
-                    font=dict(size=11, color=plot_theme["font_color"]),
-                    textangle=90,
-                )
-
         fig1.update_layout(
             title="Espectro antes de la no linealidad",
             xaxis_title="Frecuencia (Hz)",
@@ -1265,8 +1252,8 @@ def render_ejemplo2():
             hovermode="x unified",
             legend=dict(
                 orientation="h",
-                yanchor="bottom",
-                y=1.02,
+                yanchor="top",
+                y=0.88,
                 xanchor="right",
                 x=1,
                 font=dict(color=plot_theme["font_color"]),
