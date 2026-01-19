@@ -1140,9 +1140,10 @@ def render_ejemplo2():
             yaxis_title="Magnitud (u.a.)",
             yaxis_type="log",
             height=320,
-            margin=dict(l=40, r=20, t=50, b=40),
+            margin=dict(l=70, r=20, t=50, b=40),
             hovermode="x unified",
         )
+        fig1.update_yaxes(title_standoff=12)
         _apply_plot_theme(fig1, plot_theme, font_size=12)
         fig1.update_xaxes(range=[0, fmax_plot])
         st.plotly_chart(fig1, use_container_width=True, theme=None)
@@ -1193,9 +1194,10 @@ def render_ejemplo2():
             yaxis_title="Magnitud (u.a.)",
             yaxis_type="log",
             height=320,
-            margin=dict(l=40, r=20, t=50, b=40),
+            margin=dict(l=70, r=20, t=50, b=40),
             hovermode="x unified",
         )
+        fig2.update_yaxes(title_standoff=12)
         _apply_plot_theme(fig2, plot_theme, font_size=12)
         fig2.update_xaxes(range=[0, fmax_plot])
         st.plotly_chart(fig2, use_container_width=True, theme=None)
@@ -1425,35 +1427,71 @@ def render_ejemplo3():
                 yaxis_title=f"Atenuación (dB) (distancia = {dist_m} m)",
                 xaxis_type="log",
                 height=420,
-                margin=dict(l=40, r=20, t=50, b=40),
+                margin=dict(l=70, r=20, t=50, b=40),
                 hovermode="x unified",
             )
+            fig.update_yaxes(title_standoff=12)
             _apply_plot_theme(fig, plot_theme, font_size=12)
             st.plotly_chart(fig, use_container_width=True, theme=None)
 
-            descA = describe_channel(chanA)
-            descB = describe_channel(chanB)
+            wavelength_nm = (3e8 / freqs_Hz) * 1e9
+            order = np.argsort(wavelength_nm)
+            atten_A_db_m = yA / dist_m
+            atten_B_db_m = yB / dist_m
 
-            with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
-                st.markdown(
-                    f"Para la distancia seleccionada ({dist_m:.0f} m), la curva de {chanA} y la de {chanB} muestran cómo la "
-                    "atenuación crece con la frecuencia. En canales guiados, las pérdidas dependen del material y de los "
-                    "mecanismos de disipación; en espacio libre, la pérdida de trayectoria se incrementa con la distancia y "
-                    "la frecuencia de operación.\n\n"
-                    f"- **{chanA}**: {descA}\n"
-                    f"- **{chanB}**: {descB}\n"
+            fig_wavelength = go.Figure()
+            fig_wavelength.add_trace(
+                go.Scatter(
+                    x=wavelength_nm[order],
+                    y=atten_A_db_m[order],
+                    mode="lines",
+                    name=chanA,
                 )
-                st.markdown(
-                    "**Preguntas y respuestas:**\n\n"
-                    "1. **¿Cuál de los canales presenta menor atenuación para la misma distancia en la mayor parte del rango de frecuencias?**  \n"
-                    "   **R:** Depende de la selección, pero típicamente la fibra óptica presenta menor atenuación que los medios metálicos para enlaces de larga distancia.\n\n"
-                    "2. **¿Cómo afecta duplicar la distancia en un enlace de espacio libre a la potencia recibida?**  \n"
-                    "   **R:** Idealmente, la potencia recibida se reduce en aproximadamente 6 dB (modelo de propagación 1/d²).\n\n"
-                    "3. **¿Por qué es importante conocer la atenuación en función de la frecuencia al diseñar un sistema?**  \n"
-                    "   **R:** Porque determina qué bandas de frecuencia son viables, cuánta potencia de transmisión se requiere y qué márgenes de diseño deben considerarse.\n\n"
-                    "4. **¿Qué ventaja ofrecen las fibras ópticas frente a cables coaxiales o par trenzado en enlaces de larga distancia?**  \n"
-                    "   **R:** Las fibras ópticas ofrecen menor atenuación, mayor ancho de banda y menor sensibilidad al ruido electromagnético externo."
+            )
+            fig_wavelength.add_trace(
+                go.Scatter(
+                    x=wavelength_nm[order],
+                    y=atten_B_db_m[order],
+                    mode="lines",
+                    name=chanB,
                 )
+            )
+            fig_wavelength.update_layout(
+                title="Atenuación por longitud de onda",
+                xaxis_title="Longitud de onda (nm)",
+                yaxis_title="Atenuación (dB/m)",
+                xaxis_type="log",
+                height=420,
+                margin=dict(l=70, r=20, t=50, b=40),
+                hovermode="x unified",
+            )
+            fig_wavelength.update_yaxes(title_standoff=12)
+            _apply_plot_theme(fig_wavelength, plot_theme, font_size=12)
+            st.plotly_chart(fig_wavelength, use_container_width=True, theme=None)
+
+        descA = describe_channel(chanA)
+        descB = describe_channel(chanB)
+
+        with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
+            st.markdown(
+                f"Para la distancia seleccionada ({dist_m:.0f} m), la curva de {chanA} y la de {chanB} muestran cómo la "
+                "atenuación crece con la frecuencia. En canales guiados, las pérdidas dependen del material y de los "
+                "mecanismos de disipación; en espacio libre, la pérdida de trayectoria se incrementa con la distancia y "
+                "la frecuencia de operación.\n\n"
+                f"- **{chanA}**: {descA}\n"
+                f"- **{chanB}**: {descB}\n"
+            )
+            st.markdown(
+                "**Preguntas y respuestas:**\n\n"
+                "1. **¿Cuál de los canales presenta menor atenuación para la misma distancia en la mayor parte del rango de frecuencias?**  \n"
+                "   **R:** Depende de la selección, pero típicamente la fibra óptica presenta menor atenuación que los medios metálicos para enlaces de larga distancia.\n\n"
+                "2. **¿Cómo afecta duplicar la distancia en un enlace de espacio libre a la potencia recibida?**  \n"
+                "   **R:** Idealmente, la potencia recibida se reduce en aproximadamente 6 dB (modelo de propagación 1/d²).\n\n"
+                "3. **¿Por qué es importante conocer la atenuación en función de la frecuencia al diseñar un sistema?**  \n"
+                "   **R:** Porque determina qué bandas de frecuencia son viables, cuánta potencia de transmisión se requiere y qué márgenes de diseño deben considerarse.\n\n"
+                "4. **¿Qué ventaja ofrecen las fibras ópticas frente a cables coaxiales o par trenzado en enlaces de larga distancia?**  \n"
+                "   **R:** Las fibras ópticas ofrecen menor atenuación, mayor ancho de banda y menor sensibilidad al ruido electromagnético externo."
+            )
 
 # =========================
 # DINÁMICAS INTEGRADAS (GUÍA 1)
