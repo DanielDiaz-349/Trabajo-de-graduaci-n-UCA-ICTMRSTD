@@ -900,7 +900,7 @@ def render_ejemplo2():
         fig = make_subplots(
             rows=3,
             cols=1,
-            vertical_spacing=0.12,
+            vertical_spacing=0.18,
             subplot_titles=(
                 "Señal discreta en el tiempo",
                 "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
@@ -992,7 +992,7 @@ def render_ejemplo2():
         )
         plot_theme = _get_plot_theme()
         _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
         # --- Análisis de Nyquist / aliasing ---
@@ -1095,21 +1095,24 @@ def render_ejemplo3():
         else:
             x = np.sin(2 * np.pi * 0.05 * n) + 0.6 * np.sin(2 * np.pi * 0.15 * n)
 
+        n_h = np.arange(0, M)
         if tipo_filtro == "Filtro pasa bajas":
-            h = np.ones(M) / M
+            fc = 0.2
+            h = 2 * fc * np.sinc(2 * fc * (n_h - (M - 1) / 2))
+            h *= np.hamming(M)
         else:
             alpha = 0.4
-            h = alpha ** np.arange(M)
+            h = (1 - alpha) * (alpha ** n_h)
 
-        y = np.convolve(x, h)
+        h = h / np.sum(h)
+        y = np.convolve(x, h, mode="full")
 
-        n_h = np.arange(0, len(h))
         n_y = np.arange(0, len(y))
 
         fig = make_subplots(
             rows=3,
             cols=1,
-            vertical_spacing=0.12,
+            vertical_spacing=0.18,
             subplot_titles=("Entrada x[n]", "Respuesta al impulso del sistema", "Salida y[n] = x[n] * h[n]"),
         )
         fig.add_trace(go.Scatter(x=n, y=x, mode="markers", name="x[n]"), row=1, col=1)
@@ -1131,7 +1134,7 @@ def render_ejemplo3():
         )
         plot_theme = _get_plot_theme()
         _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
         # Explicación dinámica (mejor conectada con las gráficas)
@@ -1146,17 +1149,17 @@ def render_ejemplo3():
 
             if tipo_filtro == "Filtro pasa bajas":
                 st.markdown(
-                    "**Caso: Filtro  pasa bajas FIR.** \n\n"
-                    "Aquí $h[n]=\\frac{{1}}{{M}}$ para $n=0,1,\\dots,M-1$.\n\n"
-                    "- Cada muestra de salida es el promedio de las últimas $M$ muestras de la entrada.\n"
-                    "- Por eso, los cambios bruscos (bordes en la salida) se suavizan, esos bordes requieren componentes de alta frecuencia.\n"
-                    "- Al aumentar $M$, el suavizado es mayor y elimina variaciones rápidas, pero la salida pierde detalle temporal "
-                    "y aparece un retardo efectivo mayor."
+                    "**Caso: Filtro pasa bajas FIR (sinc con ventana).**\n\n"
+                    "Aquí $h[n]$ se construye con una sinc ideal truncada y suavizada con una ventana. "
+                    "Este tipo de respuesta al impulso es típica de un pasa bajas discreto.\n\n"
+                    "- Cada muestra de salida es una suma ponderada de varias muestras de la entrada.\n"
+                    "- Los cambios bruscos (bordes) se suavizan porque se atenúan las componentes de alta frecuencia.\n"
+                    "- Al aumentar $M$, el suavizado es mayor y la transición es más lenta, pero aumenta el retardo efectivo."
                 )
             else:
                 st.markdown(
                     "**Caso: Suavizado exponencial o respuesta decreciente**.\n\n"
-                    " Aquí $h[n]=\\alpha^n$ para $n=0,1,\\dots,M-1$.\n\n"
+                    " Aquí $h[n]=(1-\\alpha)\\alpha^n$ para $n=0,1,\\dots,M-1$ (normalizado para conservar ganancia DC).\n\n"
                     "- La salida es una suma ponderada donde las muestras más recientes tienen más peso.\n"
                     "- Esto introduce memoria: el sistema “arrastra” información pasada, lo cual suaviza la señal.\n"
                     "- Si $\\alpha$ es más grande (cerca de 1), la memoria es más larga; si es más pequeña, el sistema responde más rápido."
