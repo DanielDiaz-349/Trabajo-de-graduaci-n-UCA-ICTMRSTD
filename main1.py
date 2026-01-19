@@ -989,63 +989,35 @@ def render_ejemplo1():
         tx = state["tx"]
         noise = state["noise"]
         rx = state["rx"]
-
-        fig = make_subplots(
-            rows=3,
-            cols=1,
-            shared_xaxes=False,
-            vertical_spacing=0.16,  # <-- MÁS ESPACIO ENTRE GRÁFICAS
-            subplot_titles=(
-                "Señal original",
-                "Ruido AWGN",
-                "Señal + ruido"
-            ),
-        )
-
-        # Colores azul uniforme
+        plot_theme = _get_plot_theme()
         blue = "blue"
 
-        if t.size > 0 and tx.size > 0:
-            fig.add_trace(
-                go.Scatter(x=t, y=tx, mode="lines", line=dict(color=blue)),
-                row=1, col=1
+        def _build_ej1_figure(title, x_data, y_data, show_rangeslider=False):
+            fig = go.Figure()
+            if x_data.size > 0 and y_data.size > 0:
+                fig.add_trace(
+                    go.Scatter(x=x_data, y=y_data, mode="lines", line=dict(color=blue))
+                )
+            fig.update_layout(
+                title=title,
+                height=240,
+                margin=dict(l=40, r=20, t=50, b=40),
+                hovermode="x",
+                showlegend=False,
             )
+            fig.update_xaxes(title_text="Tiempo (s)", rangeslider_visible=show_rangeslider)
+            fig.update_yaxes(title_text="Amplitud")
+            _apply_plot_theme(fig, plot_theme, font_size=12)
+            fig.update_layout(title_font=dict(color=plot_theme["font_color"], size=13))
+            return fig
 
-        if t.size > 0 and noise.size > 0:
-            fig.add_trace(
-                go.Scatter(x=t, y=noise, mode="lines", line=dict(color=blue)),
-                row=2, col=1
-            )
+        fig_signal = _build_ej1_figure("Señal original", t, tx)
+        fig_noise = _build_ej1_figure("Ruido AWGN", t, noise)
+        fig_rx = _build_ej1_figure("Señal + ruido", t, rx, show_rangeslider=True)
 
-        if t.size > 0 and rx.size > 0:
-            fig.add_trace(
-                go.Scatter(x=t, y=rx, mode="lines", line=dict(color=blue)),
-                row=3, col=1
-            )
-
-        # Etiquetas de ejes
-
-        fig.update_xaxes(title_text="Tiempo (s)", row=3, col=1)
-
-        fig.update_yaxes(title_text="Amplitud", row=1, col=1)
-        fig.update_yaxes(title_text="Amplitud", row=2, col=1)
-        fig.update_yaxes(title_text="Amplitud", row=3, col=1)
-
-        # Layout mejorado
-        plot_theme = _get_plot_theme()
-        fig.update_layout(
-            height=750,  # <-- MÁS ALTO
-            margin=dict(l=40, r=20, t=90, b=60),  # <-- EVITA TRASLAPE
-            hovermode="x unified",
-            showlegend=False,
-        )
-        _apply_plot_theme(fig, plot_theme, font_size=12)
-        # ---- COLOR DE TÍTULOS DE SUBGRÁFICAS ----
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
-
-        fig.update_xaxes(rangeslider_visible=True, row=3, col=1)
-
-        st.plotly_chart(fig, use_container_width=True, theme=None)
+        st.plotly_chart(fig_signal, use_container_width=True, theme=None)
+        st.plotly_chart(fig_noise, use_container_width=True, theme=None)
+        st.plotly_chart(fig_rx, use_container_width=True, theme=None)
 
 
 def render_ejemplo2():
