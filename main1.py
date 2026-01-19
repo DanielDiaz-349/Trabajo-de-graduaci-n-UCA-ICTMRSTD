@@ -1422,9 +1422,9 @@ def render_ejemplo3():
             )
             plot_theme = _get_plot_theme()
             fig.update_layout(
-                title="Comparación de canales",
+                title="Comparación de canales : atenuación vs frecuencia",
                 xaxis_title="Frecuencia (MHz)",
-                yaxis_title=f"Atenuación (dB) (distancia = {dist_m} m)",
+                yaxis_title=f"Atenuación (dB/m)",
                 xaxis_type="log",
                 height=420,
                 margin=dict(l=70, r=20, t=50, b=40),
@@ -1457,7 +1457,7 @@ def render_ejemplo3():
                 )
             )
             fig_wavelength.update_layout(
-                title="Atenuación por longitud de onda",
+                title="Comparación de canales: atenuación vs logitud de onda",
                 xaxis_title="Longitud de onda (nm)",
                 yaxis_title="Atenuación (dB/m)",
                 xaxis_type="log",
@@ -1475,7 +1475,7 @@ def render_ejemplo3():
         with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
             st.markdown(
                 f"Para la distancia seleccionada ({dist_m:.0f} m), la curva de {chanA} y la de {chanB} muestran cómo la "
-                "atenuación crece con la frecuencia. En canales guiados, las pérdidas dependen del material y de los "
+                "atenuación crece con la frecuencia. La atenuación en dB/m describe cuánta potencia se pierde por cada metro y, al expresarla vs longitud de onda, normalmente se observa que al disminuir la longitud de onda (aumentar la frecuencia) las pérdidas crecen por mecanismos como efecto pelicular y pérdidas dieléctricas en conductores y dieléctricos. En canales guiados, las pérdidas dependen del material y de los "
                 "mecanismos de disipación; en espacio libre, la pérdida de trayectoria se incrementa con la distancia y "
                 "la frecuencia de operación.\n\n"
                 f"- **{chanA}**: {descA}\n"
