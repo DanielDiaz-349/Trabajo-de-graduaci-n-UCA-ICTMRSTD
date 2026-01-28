@@ -1200,8 +1200,9 @@ def render_ejemplo4():
                 xaxis_title="Resultado",
                 yaxis_title="Cantidad de casos",
                 height=320,
-                margin=dict(l=40, r=20, t=60, b=40),
+                margin=dict(l=70, r=20, t=60, b=40),
             )
+            fig.update_yaxes(title_standoff=24)
             plot_theme = _get_plot_theme()
             _apply_plot_theme(fig, plot_theme, font_size=12)
             st.plotly_chart(fig, use_container_width=True, theme=None)
@@ -1354,19 +1355,42 @@ def render_ejemplo5():
             fig.add_trace(
                 go.Histogram(
                     x=Y0,
-                    nbinsx=40,
+                    nbinsx=min(160, max(60, int(np.sqrt(N)))),
                     histnorm="probability density",
-                    opacity=0.55,
+                    opacity=0.35,
                     name="Y | S=0",
                 )
             )
             fig.add_trace(
                 go.Histogram(
                     x=Y1,
-                    nbinsx=40,
+                    nbinsx=min(160, max(60, int(np.sqrt(N)))),
                     histnorm="probability density",
-                    opacity=0.55,
+                    opacity=0.35,
                     name="Y | S=1",
+                )
+            )
+            x_min = -A - 4 * sigma
+            x_max = A + 4 * sigma
+            x_vals = np.linspace(x_min, x_max, 400)
+            pdf0 = (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * ((x_vals + A) / sigma) ** 2)
+            pdf1 = (1.0 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * ((x_vals - A) / sigma) ** 2)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=pdf0,
+                    mode="lines",
+                    name="PDF teórica S=0",
+                    line=dict(color="#1f77b4", width=2),
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=pdf1,
+                    mode="lines",
+                    name="PDF teórica S=1",
+                    line=dict(color="#d62728", width=2),
                 )
             )
             fig.add_vline(x=gamma, line=dict(color="black", dash="dash"), annotation_text="Umbral MAP")
@@ -1384,30 +1408,30 @@ def render_ejemplo5():
 
         with st.expander("Explicación de la simulación y preguntas", expanded=True):
             st.markdown(
-                "En BPSK el transmisor representa el bit **0** con el símbolo -A y el bit **1** con +A. "
-                "El canal agrega ruido Gaussiano, por eso el receptor no ve una observación "
-                "Y que queda “corrida” por el ruido: Y = S + n. Como n es Gaussiano, entonces la distribución "
-                "de Y condicionado al símbolo transmitido también es Gaussiana: aparece una campana centrada en -A "
-                "para Y|S=0 y otra centrada en +A para Y|S=1. Esas dos PDF condicionadas, f{Y|S}(y|0) y "
-                "f{Y|S}(y|1), resumen estadísticamente cómo se ve cada símbolo a la salida del canal.\n\n"
-                "El detector **MAP** (máxima probabilidad a posteriori) responde a la pregunta más práctica del receptor: "
-                "dado un valor observado (y), **¿cuál símbolo fue más probable que se haya enviado?** Matemáticamente compara "
-                "las probabilidades a posteriori P(S=1|Y=y) y P(S=0|Y=y). Como esas cantidades no se calculan ‘a ojo’, "
-                "se usan las PDF condicionadas y las probabilidades a priori mediante Bayes: la evidencia del canal viene en "
-                "\(f{Y|S}(y|s) y la tendencia de transmisión viene en P(S=s). En otras palabras, MAP combina lo que "
-                "miden los datos con lo que ya se sabía antes de observar (Y).\n\n"
-                "En este modelo Gaussiano, esa comparación se reduce a un **umbral** \(\gamma\). El umbral es el punto sobre el "
-                "eje \(Y\) donde el receptor cambia de decisión: valores mayores que \(\gamma\) favorecen \(S=1\) y valores menores "
-                "favorecen \(S=0\). Su significado es muy concreto: es la frontera que separa la región donde ‘es más creíble’ la "
-                "hipótesis \(S=1\) de la región donde ‘es más creíble’ \(S=0\).\n\n"
-                "Cuando los símbolos son equiprobables, \(P(S=1)=P(S=0)=0.5\), el umbral cae en el centro y el detector se vuelve "
-                "de **máxima verosimilitud (ML)**: decide únicamente por cercanía a \(\pm A\), típicamente con \(\gamma\) cerca de 0. "
-                "En cambio, si \(P(S=1)\) es mayor que \(P(S=0)\), el umbral se desplaza para **favorecer al símbolo más frecuente**: "
-                "acepta \(S=1\) con observaciones menos “contundentes”, porque a priori es más probable que ese símbolo haya sido enviado. "
-                "Además, el valor de \(\sigma^2\) también afecta a \(\gamma\): con más ruido las campanas se traslapan más y el detector "
-                "necesita ajustar la frontera para minimizar el error promedio.\n\n"
-                "El histograma muestra justamente ese traslape: las barras de \(Y|S=0\) y \(Y|S=1\) se enciman por culpa del ruido. "
-                "Cada vez que una muestra cae del ‘lado equivocado’ del umbral ocurre un error de decisión, y al contarlos se estima el BER."
+                "Este ejercicio se puede leer como una historia paso a paso:\n\n"
+                "**1) Cómo se generan las observaciones.**\n"
+                "- El transmisor envía **0** como \(-A\) y **1** como \(+A\).\n"
+                "- El canal agrega ruido Gaussiano \(n \sim \mathcal{N}(0, \sigma^2)\).\n"
+                "- Por eso el receptor observa \(Y = S + n\): si se envió 0, la nube de valores se concentra cerca de \(-A\); "
+                "si se envió 1, se concentra cerca de \(+A\).\n\n"
+                "**2) Qué significan las dos campanas.**\n"
+                "Las distribuciones \(f_{Y|S}(y|0)\) y \(f_{Y|S}(y|1)\) son las **PDF condicionadas**: describen cómo se ve "
+                "el canal cuando se envía cada símbolo. El histograma es una aproximación experimental, y las curvas suaves son "
+                "la referencia teórica; al aumentar el número de bits, el histograma se vuelve más parecido a la curva.\n\n"
+                "**3) La pregunta MAP.**\n"
+                "El detector MAP contesta: *dado el valor observado \(y\), ¿qué símbolo es más probable?* Eso significa comparar "
+                "P(S=1|Y=y) contra P(S=0|Y=y). Para calcularlas se usa Bayes:\n"
+                "- La evidencia del canal viene en \(f_{Y|S}(y|s)\).\n"
+                "- La tendencia de transmisión viene en \(P(S=s)\).\n\n"
+                "**4) El umbral \(\gamma\).**\n"
+                "En el caso Gaussiano, toda la decisión se reduce a un **umbral**: si \(Y \ge \gamma\) se decide 1, si no se decide 0. "
+                "Ese punto es la frontera donde ambas hipótesis son igual de creíbles.\n\n"
+                "**5) Qué pasa cuando cambian las probabilidades.**\n"
+                "Si \(P(S=1)=P(S=0)\), el umbral queda cerca de 0 y el detector se comporta como **ML** (decisión por cercanía a \(\pm A\)). "
+                "Si una probabilidad a priori es mayor, el umbral se desplaza para favorecer al símbolo más frecuente. Con más ruido "
+                "(\(\sigma^2\) grande), las campanas se traslapan más y el umbral debe equilibrar ese traslape para minimizar el error.\n\n"
+                "En resumen: el MAP combina **lo que observa el canal** con **lo que se sabe antes de observar** para decidir con el "
+                "menor error posible, y el BER mide cuántas veces esa decisión falla."
             )
 
             st.markdown("#### Preguntas y respuestas")
