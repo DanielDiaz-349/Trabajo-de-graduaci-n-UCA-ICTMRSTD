@@ -1470,46 +1470,59 @@ def render_dinamica1():
         return
 
     st.markdown(
-        "En esta dinámica se presentan dos casos de muestreo de la misma señal: "
-        "uno que cumple el criterio de Nyquist y otro que no. El objetivo es identificar "
-        "visualmente el aliasing y razonar sobre la elección de fₛ."
+        "En esta dinámica se observa una señal continua (suma de sinusoides) y dos muestreos: "
+        "uno exactamente a la frecuencia de Nyquist y otro por debajo de ella. El objetivo es "
+        "identificar el aliasing y relacionarlo con la elección de $f_s$."
     )
 
-    f_sig = 500.0
-    fs_bueno = 8000.0
-    fs_malo = 600.0
+    f1 = 400.0
+    f2 = 900.0
+    f_max = max(f1, f2)
+    fs_nyquist = 2.0 * f_max
+    fs_bajo = 1200.0
 
-    T = 0.02
-    t_b = np.arange(0, T, 1.0 / fs_bueno)
-    x_b = np.sin(2 * np.pi * f_sig * t_b)
+    T = 0.012
+    fs_cont = 50000.0
+    t_cont = np.arange(0, T, 1.0 / fs_cont)
+    x_cont = np.sin(2 * np.pi * f1 * t_cont) + 0.6 * np.sin(2 * np.pi * f2 * t_cont)
 
-    t_m = np.arange(0, T, 1.0 / fs_malo)
-    x_m = np.sin(2 * np.pi * f_sig * t_m)
+    t_n = np.arange(0, T, 1.0 / fs_nyquist)
+    x_n = np.sin(2 * np.pi * f1 * t_n) + 0.6 * np.sin(2 * np.pi * f2 * t_n)
+
+    t_b = np.arange(0, T, 1.0 / fs_bajo)
+    x_b = np.sin(2 * np.pi * f1 * t_b) + 0.6 * np.sin(2 * np.pi * f2 * t_b)
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=1,
-        vertical_spacing=0.18,
+        vertical_spacing=0.12,
         subplot_titles=(
-            f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)",
-            f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)",
+            "Gráfica 1: Señal original (continua)",
+            f"Gráfica 2: Muestreo a Nyquist (fₛ = {fs_nyquist:.0f} Hz)",
+            f"Gráfica 3: Muestreo por debajo de Nyquist (fₛ = {fs_bajo:.0f} Hz)",
         ),
     )
     fig.add_trace(
-        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_A[n]"),
+        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="x(t)"),
         row=1,
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=t_m, y=x_m, mode="markers", name="x_B[n]"),
+        go.Scatter(x=t_n, y=x_n, mode="markers", name="x_N[n]"),
         row=2,
         col=1,
     )
-    fig.update_yaxes(title_text="x_A[n]", row=1, col=1)
-    fig.update_yaxes(title_text="x_B[n]", row=2, col=1)
-    fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
+    fig.add_trace(
+        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_B[n]"),
+        row=3,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x(t)", row=1, col=1)
+    fig.update_yaxes(title_text="x_N[n]", row=2, col=1)
+    fig.update_yaxes(title_text="x_B[n]", row=3, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=3, col=1)
     fig.update_layout(
-        height=520,
+        height=720,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -1523,20 +1536,20 @@ def render_dinamica1():
 
     with st.form("g2_dyn1_respuestas"):
         q1 = st.radio(
-            "1) ¿En cuál de los casos se cumple mejor el criterio de Nyquist?",
-            ["Seleccione una opción", "Caso A", "Caso B"],
+            "1) ¿Qué gráfica corresponde al muestreo exactamente a la frecuencia de Nyquist?",
+            ["Seleccione una opción", "Gráfica 2", "Gráfica 3"],
             index=0,
             key="g2_dyn1_q1"
         )
         q2 = st.radio(
-            "2) Verdadero o falso: “El aliasing puede corregirse aumentando solo la duración T manteniendo fₛ fija.”",
-            ["Seleccione una opción", "Verdadero", "Falso"],
+            "2) ¿En cuál gráfica se observa aliasing por muestreo insuficiente?",
+            ["Seleccione una opción", "Gráfica 2", "Gráfica 3"],
             index=0,
             key="g2_dyn1_q2"
         )
         q3 = st.radio(
-            "3) Si la frecuencia más alta de la señal es 3 kHz, ¿cuál de estas opciones evita aliasing?",
-            ["Seleccione una opción", "fₛ = 4 kHz", "fₛ = 5 kHz", "fₛ = 8 kHz"],
+            f"3) Si la frecuencia más alta es {f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?",
+            ["Seleccione una opción", "1200 Hz", f"{fs_nyquist:.0f} Hz", "2400 Hz"],
             index=0,
             key="g2_dyn1_q3"
         )
@@ -1544,9 +1557,9 @@ def render_dinamica1():
 
     if enviar:
         correct_answers = {
-            "q1": "Caso A",
-            "q2": "Falso",
-            "q3": "fₛ = 8 kHz",
+            "q1": "Gráfica 2",
+            "q2": "Gráfica 3",
+            "q3": f"{fs_nyquist:.0f} Hz",
         }
         answers = {"q1": q1, "q2": q2, "q3": q3}
 
@@ -1564,9 +1577,9 @@ def render_dinamica1():
         student_info = st.session_state.get("student_info", {})
         key = {
             "descripcion": "Guía 2 - Dinámica 1 - Muestreo correcto e incorrecto",
-            "frecuencia_senal_Hz": f_sig,
-            "fs_caso_A_Hz": fs_bueno,
-            "fs_caso_B_Hz": fs_malo,
+            "frecuencias_senal_Hz": [f1, f2],
+            "fs_nyquist_Hz": fs_nyquist,
+            "fs_bajo_Hz": fs_bajo,
         }
 
         #  En vez de generar PDF aquí, solo guardamos en session_state
@@ -1595,71 +1608,85 @@ def render_dinamica2():
         return
 
     st.markdown(
-        "Se muestrea una señal compuesta por dos senoidales. La frecuencia de muestreo elegida "
-        "provoca aliasing, por lo que el espectro discreto no representa fielmente la señal original."
+        "Se muestra el espectro de una señal muestreada alrededor de múltiplos de $k\\,f_s$ "
+        "(con $k=-2,\\dots,2$). La primera gráfica ilustra aliasing (réplicas superpuestas) "
+        "y la segunda cumple Nyquist, evitando superposición."
     )
 
     A1 = 1.0
-    f1 = 100.0
-    A2 = 0.7
-    f2 = 300.0
-    fs = 200.0
-    T = 0.08
+    f1 = 200.0
+    A2 = 0.8
+    f2 = 650.0
+    f_max = max(f1, f2)
+    fs_alias = 800.0
+    fs_nyquist = 2000.0
+    k_min, k_max = -2, 2
 
-    t_disc = np.arange(0, T, 1.0 / fs)
-    x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
+    def _replicated_spectrum(freqs, amps, fs, k_min, k_max):
+        replica_freqs = []
+        replica_amps = []
+        for k in range(k_min, k_max + 1):
+            for freq, amp in zip(freqs, amps):
+                replica_freqs.extend([freq + k * fs, -freq + k * fs])
+                replica_amps.extend([amp / 2.0, amp / 2.0])
+        return replica_freqs, replica_amps
 
-    N = len(x_disc)
-    X = np.fft.fft(x_disc)
-    freqs = np.fft.fftfreq(N, d=1.0 / fs)
-    X_shift = np.fft.fftshift(X)
-    freqs_shift = np.fft.fftshift(freqs)
-    X_mag_shift = np.abs(X_shift) / N
+    def _plot_replicas(fig, freqs, amps, fs, row, col):
+        replica_freqs, replica_amps = _replicated_spectrum(freqs, amps, fs, k_min, k_max)
+        x_lines, y_lines = _build_stem_lines(replica_freqs, replica_amps)
+        fig.add_trace(
+            go.Scatter(
+                x=x_lines,
+                y=y_lines,
+                mode="lines",
+                line=dict(color="#1f77b4", width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=row,
+            col=col,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=replica_freqs,
+                y=replica_amps,
+                mode="markers",
+                marker=dict(color="#1f77b4", size=6),
+                name="|X_s(f)|",
+            ),
+            row=row,
+            col=col,
+        )
 
     fig = make_subplots(
         rows=2,
         cols=1,
         vertical_spacing=0.18,
         subplot_titles=(
-            "Señal discreta muestreada",
-            "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
+            f"Gráfica 1: Espectro alrededor de k·fₛ (fₛ = {fs_alias:.0f} Hz, aliasing)",
+            f"Gráfica 2: Espectro alrededor de k·fₛ (fₛ = {fs_nyquist:.0f} Hz, sin aliasing)",
         ),
     )
-    fig.add_trace(
-        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
+
+    _plot_replicas(fig, [f1, f2], [A1, A2], fs_alias, row=1, col=1)
+    _plot_replicas(fig, [f1, f2], [A1, A2], fs_nyquist, row=2, col=1)
+
+    fig.update_yaxes(title_text="|X_s(f)|", row=1, col=1)
+    fig.update_yaxes(title_text="|X_s(f)|", row=2, col=1)
+    fig.update_xaxes(
+        title_text="Frecuencia (Hz)",
         row=1,
         col=1,
+        range=[(k_min - 0.5) * fs_alias, (k_max + 0.5) * fs_alias],
     )
-    base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
-    fig.add_trace(
-        go.Scatter(
-            x=base_x_lines,
-            y=base_y_lines,
-            mode="lines",
-            line=dict(color="#1f77b4", width=1),
-            hoverinfo="skip",
-            showlegend=False,
-        ),
+    fig.update_xaxes(
+        title_text="Frecuencia (Hz)",
         row=2,
         col=1,
+        range=[(k_min - 0.5) * fs_nyquist, (k_max + 0.5) * fs_nyquist],
     )
-    fig.add_trace(
-        go.Scatter(
-            x=freqs_shift,
-            y=X_mag_shift,
-            mode="markers",
-            name="|X(f)|",
-            marker=dict(color="#1f77b4", size=6),
-        ),
-        row=2,
-        col=1,
-    )
-    fig.update_yaxes(title_text="x[n]", row=1, col=1)
-    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
-    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
-    fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, range=[-fs / 2, fs / 2])
     fig.update_layout(
-        height=540,
+        height=560,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -1673,20 +1700,20 @@ def render_dinamica2():
 
     with st.form("g2_dyn2_respuestas"):
         q1 = st.radio(
-            "1) ¿Se cumple el criterio de Nyquist para esta señal?",
-            ["Seleccione una opción", "Sí, porque fₛ > 2·f_max.", "No, porque fₛ < 2·f_max.", "No aplica."],
+            "1) ¿En cuál gráfica se observa aliasing por superposición de réplicas?",
+            ["Seleccione una opción", "Gráfica 1", "Gráfica 2"],
             index=0,
             key="g2_dyn2_q1"
         )
         q2 = st.radio(
-            "2) La componente de 300 Hz se refleja (aliasing) aproximadamente en:",
-            ["Seleccione una opción", "100 Hz", "300 Hz", "500 Hz"],
+            "2) ¿Qué condición se cumple en la Gráfica 2 para evitar aliasing?",
+            ["Seleccione una opción", "fₛ ≥ 2·f_max", "fₛ = f_max", "fₛ ≤ f_max/2"],
             index=0,
             key="g2_dyn2_q2"
         )
         q3 = st.radio(
-            "3) Para evitar aliasing con f_max = 300 Hz, la fₛ mínima debería ser:",
-            ["Seleccione una opción", "400 Hz", "600 Hz", "800 Hz"],
+            f"3) Si f_max = {f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?",
+            ["Seleccione una opción", "1000 Hz", f"{2 * f_max:.0f} Hz", "1600 Hz"],
             index=0,
             key="g2_dyn2_q3"
         )
@@ -1694,9 +1721,9 @@ def render_dinamica2():
 
     if enviar:
         correct_answers = {
-            "q1": "No, porque fₛ < 2·f_max.",
-            "q2": "100 Hz",
-            "q3": "600 Hz",
+            "q1": "Gráfica 1",
+            "q2": "fₛ ≥ 2·f_max",
+            "q3": f"{2 * f_max:.0f} Hz",
         }
         answers = {"q1": q1, "q2": q2, "q3": q3}
 
@@ -1718,8 +1745,9 @@ def render_dinamica2():
             "f1_Hz": f1,
             "A2": A2,
             "f2_Hz": f2,
-            "fs_Hz": fs,
-            "T_s": T,
+            "fs_alias_Hz": fs_alias,
+            "fs_nyquist_Hz": fs_nyquist,
+            "k_range": [k_min, k_max],
         }
 
         # Guardar resultados en session_state (no PDF aquí)
@@ -1951,48 +1979,61 @@ def render_dinamica1_integrada():
     st.markdown("### Dinámica 1 – Muestreo correcto e incorrecto (aliasing)")
 
     st.markdown(
-        "Se presentan dos casos de muestreo de la **misma** señal: "
-        "uno que cumple el criterio de Nyquist y otro que no. "
+        "Se presenta la señal original (continua) y dos muestreos: "
+        "uno justo a la frecuencia de Nyquist y otro por debajo. "
         "El objetivo es identificar visualmente el aliasing y razonar sobre la elección de $f_s$."
     )
 
     # Señal de referencia
-    f_sig = 2300.0
-    T = 0.02  # ventana para ver suficiente patrón en las muestras
-    fs_bueno = 8000.0
-    fs_malo = 600.0
+    f1 = 400.0
+    f2 = 900.0
+    f_max = max(f1, f2)
+    T = 0.012
+    fs_nyquist = 2.0 * f_max
+    fs_bajo = 1200.0
+    fs_cont = 50000.0
 
-    t_b = np.arange(0, T, 1.0 / fs_bueno)
-    x_b = np.sin(2 * np.pi * f_sig * t_b)
+    t_cont = np.arange(0, T, 1.0 / fs_cont)
+    x_cont = np.sin(2 * np.pi * f1 * t_cont) + 0.6 * np.sin(2 * np.pi * f2 * t_cont)
 
-    t_m = np.arange(0, T, 1.0 / fs_malo)
-    x_m = np.sin(2 * np.pi * f_sig * t_m)
+    t_n = np.arange(0, T, 1.0 / fs_nyquist)
+    x_n = np.sin(2 * np.pi * f1 * t_n) + 0.6 * np.sin(2 * np.pi * f2 * t_n)
+
+    t_b = np.arange(0, T, 1.0 / fs_bajo)
+    x_b = np.sin(2 * np.pi * f1 * t_b) + 0.6 * np.sin(2 * np.pi * f2 * t_b)
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.18,
+        vertical_spacing=0.12,
         subplot_titles=(
-            f"Caso A: muestreo con fₛ = {fs_bueno:.0f} Hz (bueno)",
-            f"Caso B: muestreo con fₛ = {fs_malo:.0f} Hz (posible aliasing)",
+            "Gráfica 1: Señal original (continua)",
+            f"Gráfica 2: Muestreo a Nyquist (fₛ = {fs_nyquist:.0f} Hz)",
+            f"Gráfica 3: Muestreo por debajo de Nyquist (fₛ = {fs_bajo:.0f} Hz)",
         ),
     )
     fig.add_trace(
-        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_A[n]"),
+        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="x(t)"),
         row=1,
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=t_m, y=x_m, mode="markers", name="x_B[n]"),
+        go.Scatter(x=t_n, y=x_n, mode="markers", name="x_N[n]"),
         row=2,
         col=1,
     )
-    fig.update_yaxes(title_text="x_A[n]", row=1, col=1)
-    fig.update_yaxes(title_text="x_B[n]", row=2, col=1)
-    fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
+    fig.add_trace(
+        go.Scatter(x=t_b, y=x_b, mode="markers", name="x_B[n]"),
+        row=3,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x(t)", row=1, col=1)
+    fig.update_yaxes(title_text="x_N[n]", row=2, col=1)
+    fig.update_yaxes(title_text="x_B[n]", row=3, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=3, col=1)
     fig.update_layout(
-        height=520,
+        height=720,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -2004,20 +2045,20 @@ def render_dinamica1_integrada():
 
     st.markdown("#### Preguntas")
     st.radio(
-        "1) ¿Cuál caso cumple el criterio de Nyquist y evita aliasing?",
-        ["Seleccione una opción", "Caso A", "Caso B"],
+        "1) ¿Qué gráfica corresponde al muestreo exactamente a la frecuencia de Nyquist?",
+        ["Seleccione una opción", "Gráfica 2", "Gráfica 3"],
         index=0,
         key="g2_dyn1_q1",
     )
     st.radio(
-        "2) Verdadero o falso: “El aliasing puede corregirse aumentando solo la duración T manteniendo fₛ fija.”",
-        ["Seleccione una opción", "Verdadero", "Falso"],
+        "2) ¿En cuál gráfica se observa aliasing por muestreo insuficiente?",
+        ["Seleccione una opción", "Gráfica 2", "Gráfica 3"],
         index=0,
         key="g2_dyn1_q2",
     )
     st.radio(
-        "3) Si la frecuencia más alta de la señal es 3 kHz, ¿cuál de estas opciones evita aliasing?",
-        ["Seleccione una opción", "fₛ = 4 kHz", "fₛ = 5 kHz", "fₛ = 8 kHz"],
+        f"3) Si la frecuencia más alta es {f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?",
+        ["Seleccione una opción", "1200 Hz", f"{fs_nyquist:.0f} Hz", "2400 Hz"],
         index=0,
         key="g2_dyn1_q3",
     )
@@ -2033,72 +2074,85 @@ def render_dinamica2_integrada():
     st.markdown("### Dinámica 2 – Aliasing en el muestreo y análisis en frecuencia")
 
     st.markdown(
-        "Se muestrea una señal compuesta por dos senoidales y se observa su espectro discreto. "
-        "Como $f_s$ es bajo para la frecuencia máxima presente, aparece aliasing y las componentes "
-        "se superponen en la banda base."
+        "Se muestra el espectro de una señal muestreada alrededor de múltiplos de $k\\,f_s$. "
+        "La primera gráfica presenta aliasing por superposición de réplicas; la segunda cumple "
+        "Nyquist y evita esa superposición."
     )
 
     A1 = 1.0
-    f1 = 100.0
-    A2 = 0.7
-    f2 = 300.0
-    fs = 200.0
-    T = 0.08
+    f1 = 200.0
+    A2 = 0.8
+    f2 = 650.0
+    f_max = max(f1, f2)
+    fs_alias = 800.0
+    fs_nyquist = 2000.0
+    k_min, k_max = -2, 2
 
-    t_disc = np.arange(0, T, 1.0 / fs)
-    x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
+    def _replicated_spectrum(freqs, amps, fs, k_min, k_max):
+        replica_freqs = []
+        replica_amps = []
+        for k in range(k_min, k_max + 1):
+            for freq, amp in zip(freqs, amps):
+                replica_freqs.extend([freq + k * fs, -freq + k * fs])
+                replica_amps.extend([amp / 2.0, amp / 2.0])
+        return replica_freqs, replica_amps
 
-    N = len(x_disc)
-    X = np.fft.fft(x_disc)
-    freqs = np.fft.fftfreq(N, d=1.0 / fs)
-    X_shift = np.fft.fftshift(X)
-    freqs_shift = np.fft.fftshift(freqs)
-    X_mag_shift = np.abs(X_shift) / N
+    def _plot_replicas(fig, freqs, amps, fs, row, col):
+        replica_freqs, replica_amps = _replicated_spectrum(freqs, amps, fs, k_min, k_max)
+        x_lines, y_lines = _build_stem_lines(replica_freqs, replica_amps)
+        fig.add_trace(
+            go.Scatter(
+                x=x_lines,
+                y=y_lines,
+                mode="lines",
+                line=dict(color="#1f77b4", width=1),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=row,
+            col=col,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=replica_freqs,
+                y=replica_amps,
+                mode="markers",
+                marker=dict(color="#1f77b4", size=6),
+                name="|X_s(f)|",
+            ),
+            row=row,
+            col=col,
+        )
 
     fig = make_subplots(
         rows=2,
         cols=1,
         vertical_spacing=0.18,
         subplot_titles=(
-            "Señal discreta muestreada",
-            "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
+            f"Gráfica 1: Espectro alrededor de k·fₛ (fₛ = {fs_alias:.0f} Hz, aliasing)",
+            f"Gráfica 2: Espectro alrededor de k·fₛ (fₛ = {fs_nyquist:.0f} Hz, sin aliasing)",
         ),
     )
-    fig.add_trace(
-        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
+
+    _plot_replicas(fig, [f1, f2], [A1, A2], fs_alias, row=1, col=1)
+    _plot_replicas(fig, [f1, f2], [A1, A2], fs_nyquist, row=2, col=1)
+
+    fig.update_yaxes(title_text="|X_s(f)|", row=1, col=1)
+    fig.update_yaxes(title_text="|X_s(f)|", row=2, col=1)
+    fig.update_xaxes(
+        title_text="Frecuencia (Hz)",
         row=1,
         col=1,
+        range=[(k_min - 0.5) * fs_alias, (k_max + 0.5) * fs_alias],
     )
-    base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
-    fig.add_trace(
-        go.Scatter(
-            x=base_x_lines,
-            y=base_y_lines,
-            mode="lines",
-            line=dict(color="#1f77b4", width=1),
-            hoverinfo="skip",
-            showlegend=False,
-        ),
+    fig.update_xaxes(
+        title_text="Frecuencia (Hz)",
         row=2,
         col=1,
+        range=[(k_min - 0.5) * fs_nyquist, (k_max + 0.5) * fs_nyquist],
     )
-    fig.add_trace(
-        go.Scatter(
-            x=freqs_shift,
-            y=X_mag_shift,
-            mode="markers",
-            name="|X(f)|",
-            marker=dict(color="#1f77b4", size=6),
-        ),
-        row=2,
-        col=1,
-    )
-    fig.update_yaxes(title_text="x[n]", row=1, col=1)
-    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
-    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
-    fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, range=[-fs / 2, fs / 2])
     fig.update_layout(
-        height=540,
+        height=560,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -2110,20 +2164,20 @@ def render_dinamica2_integrada():
 
     st.markdown("#### Preguntas")
     st.radio(
-        "1) ¿Se cumple el criterio de Nyquist para esta señal?",
-        ["Seleccione una opción", "Sí, porque fₛ > 2·f_max.", "No, porque fₛ < 2·f_max.", "No aplica."],
+        "1) ¿En cuál gráfica se observa aliasing por superposición de réplicas?",
+        ["Seleccione una opción", "Gráfica 1", "Gráfica 2"],
         index=0,
         key="g2_dyn2_q1",
     )
     st.radio(
-        "2) La componente de 300 Hz se refleja (aliasing) aproximadamente en:",
-        ["Seleccione una opción", "100 Hz", "300 Hz", "500 Hz"],
+        "2) ¿Qué condición se cumple en la Gráfica 2 para evitar aliasing?",
+        ["Seleccione una opción", "fₛ ≥ 2·f_max", "fₛ = f_max", "fₛ ≤ f_max/2"],
         index=0,
         key="g2_dyn2_q2",
     )
     st.radio(
-        "3) Para evitar aliasing con f_max = 300 Hz, la fₛ mínima debería ser:",
-        ["Seleccione una opción", "400 Hz", "600 Hz", "800 Hz"],
+        f"3) Si f_max = {f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?",
+        ["Seleccione una opción", "1000 Hz", f"{2 * f_max:.0f} Hz", "1600 Hz"],
         index=0,
         key="g2_dyn2_q3",
     )
