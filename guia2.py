@@ -1582,11 +1582,11 @@ def render_dinamica1():
 
 
 # =========================================================
-# Dinámica 2 – Convolución
+# Dinámica 2 – Aliasing y análisis en frecuencia
 # =========================================================
 
 def render_dinamica2():
-    st.subheader("Dinámica 2 – Relación entrada–sistema–salida (convolución)")
+    st.subheader("Dinámica 2 – Aliasing en el muestreo y análisis en frecuencia")
 
     # Registro
     started = _render_student_registration("g2_dyn2")
@@ -1595,38 +1595,71 @@ def render_dinamica2():
         return
 
     st.markdown(
-        "En esta dinámica se presenta una señal de entrada x[n] y un sistema LTI simple h[n]. "
-        "El objetivo es predecir cualitativamente cómo será la salida y[n] antes de verla."
+        "Se muestrea una señal compuesta por dos senoidales. La frecuencia de muestreo elegida "
+        "provoca aliasing, por lo que el espectro discreto no representa fielmente la señal original."
     )
 
-    n = np.arange(0, 40)
-    x = np.zeros_like(n, dtype=float)
-    x[10:15] = 1.0  # pequeño pulso
-    h = np.ones(5) / 5.0  # filtro promediador
-    y = np.convolve(x, h)
+    A1 = 1.0
+    f1 = 100.0
+    A2 = 0.7
+    f2 = 300.0
+    fs = 200.0
+    T = 0.08
 
-    n_h = np.arange(0, len(h))
+    t_disc = np.arange(0, T, 1.0 / fs)
+    x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
+
+    N = len(x_disc)
+    X = np.fft.fft(x_disc)
+    freqs = np.fft.fftfreq(N, d=1.0 / fs)
+    X_shift = np.fft.fftshift(X)
+    freqs_shift = np.fft.fftshift(freqs)
+    X_mag_shift = np.abs(X_shift) / N
+
     fig = make_subplots(
         rows=2,
         cols=1,
         vertical_spacing=0.18,
-        subplot_titles=("Entrada x[n] (pulso)", "Respuesta al impulso h[n] (promediador)"),
+        subplot_titles=(
+            "Señal discreta muestreada",
+            "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
+        ),
     )
     fig.add_trace(
-        go.Scatter(x=n, y=x, mode="markers", name="x[n]"),
+        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
         row=1,
         col=1,
     )
+    base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
     fig.add_trace(
-        go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"),
+        go.Scatter(
+            x=base_x_lines,
+            y=base_y_lines,
+            mode="lines",
+            line=dict(color="#1f77b4", width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=freqs_shift,
+            y=X_mag_shift,
+            mode="markers",
+            name="|X(f)|",
+            marker=dict(color="#1f77b4", size=6),
+        ),
         row=2,
         col=1,
     )
     fig.update_yaxes(title_text="x[n]", row=1, col=1)
-    fig.update_yaxes(title_text="h[n]", row=2, col=1)
-    fig.update_xaxes(title_text="n", row=2, col=1)
+    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, range=[-fs / 2, fs / 2])
     fig.update_layout(
-        height=520,
+        height=540,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -1640,30 +1673,20 @@ def render_dinamica2():
 
     with st.form("g2_dyn2_respuestas"):
         q1 = st.radio(
-            "1) La salida y[n] será:",
-            ["Seleccione una opción", "Más suave que x[n].", "Más ruidosa.", "Con impulsos más agudos."],
+            "1) ¿Se cumple el criterio de Nyquist para esta señal?",
+            ["Seleccione una opción", "Sí, porque fₛ > 2·f_max.", "No, porque fₛ < 2·f_max.", "No aplica."],
             index=0,
             key="g2_dyn2_q1"
         )
         q2 = st.radio(
-            "2) ¿Cuál de las siguientes opciones describe mejor lo que hace el sistema?",
-            [
-                "Seleccione una opción",
-                "Un amplificador puro.",
-                "Un filtro suavizador (pasa bajas).",
-                "Un generador de ruido."
-            ],
+            "2) La componente de 300 Hz se refleja (aliasing) aproximadamente en:",
+            ["Seleccione una opción", "100 Hz", "300 Hz", "500 Hz"],
             index=0,
             key="g2_dyn2_q2"
         )
         q3 = st.radio(
-            "3) ¿Cuál expresión corresponde a la salida de un sistema LTI?",
-            [
-                "Seleccione una opción",
-                "y[n] = x[n] + h[n]",
-                "y[n] = x[n] · h[n]",
-                "y[n] = Σ_k x[k]·h[n−k]"
-            ],
+            "3) Para evitar aliasing con f_max = 300 Hz, la fₛ mínima debería ser:",
+            ["Seleccione una opción", "400 Hz", "600 Hz", "800 Hz"],
             index=0,
             key="g2_dyn2_q3"
         )
@@ -1671,9 +1694,9 @@ def render_dinamica2():
 
     if enviar:
         correct_answers = {
-            "q1": "Más suave que x[n].",
-            "q2": "Un filtro suavizador (pasa bajas).",
-            "q3": "y[n] = Σ_k x[k]·h[n−k]",
+            "q1": "No, porque fₛ < 2·f_max.",
+            "q2": "100 Hz",
+            "q3": "600 Hz",
         }
         answers = {"q1": q1, "q2": q2, "q3": q3}
 
@@ -1690,9 +1713,13 @@ def render_dinamica2():
 
         student_info = st.session_state.get("student_info", {})
         key = {
-            "descripcion": "Guía 2 - Dinámica 2 - Convolución y salida de un filtro promediador",
-            "tipo_entrada": "pulso rectangular entre n=10 y n=14",
-            "tipo_sistema": "filtro promediador de longitud 5",
+            "descripcion": "Guía 2 - Dinámica 2 - Aliasing en muestreo y análisis en frecuencia",
+            "A1": A1,
+            "f1_Hz": f1,
+            "A2": A2,
+            "f2_Hz": f2,
+            "fs_Hz": fs,
+            "T_s": T,
         }
 
         # Guardar resultados en session_state (no PDF aquí)
@@ -1703,24 +1730,6 @@ def render_dinamica2():
             "correct": correct_answers,
             "key": key,
         }
-
-        # (Opcional) Mostrar la salida como ya la tenías:
-        n_y = np.arange(0, len(y))
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=n_y, y=y, mode="markers", name="y[n]"))
-        fig2.update_layout(
-            title="Salida y[n] = x[n] * h[n]",
-            height=360,
-            margin=dict(l=40, r=20, t=60, b=50),
-            hovermode="x unified",
-            showlegend=False,
-        )
-        fig2.update_xaxes(title_text="n")
-        fig2.update_yaxes(title_text="y[n]")
-        plot_theme = _get_plot_theme()
-        _apply_plot_theme(fig2, plot_theme, font_size=12)
-        fig2.update_layout(title_font=dict(color=plot_theme["font_color"], size=14))
-        st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         st.success("Respuestas guardadas para la Dinámica 2. Continúa con las demás dinámicas.")
 
@@ -1948,13 +1957,10 @@ def render_dinamica1_integrada():
     )
 
     # Señal de referencia
-    f_sig = 3000.0
-    T = 0.005  # ventana corta para ver bien muestras
+    f_sig = 2300.0
+    T = 0.02  # ventana para ver suficiente patrón en las muestras
     fs_bueno = 8000.0
     fs_malo = 600.0
-
-    t_cont = np.arange(0, T, 1.0 / 200000)  # "continuo" para referencia visual
-    x_cont = np.sin(2 * np.pi * f_sig * t_cont)
 
     t_b = np.arange(0, T, 1.0 / fs_bueno)
     x_b = np.sin(2 * np.pi * f_sig * t_b)
@@ -1973,18 +1979,8 @@ def render_dinamica1_integrada():
         ),
     )
     fig.add_trace(
-        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="Señal continua"),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
         go.Scatter(x=t_b, y=x_b, mode="markers", name="x_A[n]"),
         row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="Señal continua"),
-        row=2,
         col=1,
     )
     fig.add_trace(
@@ -2034,44 +2030,75 @@ def render_dinamica1_integrada():
 
 
 def render_dinamica2_integrada():
-    st.markdown("### Dinámica 2 – Convolución y sistema LTI (interpretación)")
+    st.markdown("### Dinámica 2 – Aliasing en el muestreo y análisis en frecuencia")
 
     st.markdown(
-        "Se muestra una señal de entrada $x[n]$ y la respuesta al impulso $h[n]$ de un sistema LTI. "
-        "Con esa información, se puede predecir cualitativamente la salida $y[n]$ sin necesidad de graficarla: "
-        "recordá que en sistemas LTI se cumple $y[n] = x[n] * h[n]$."
+        "Se muestrea una señal compuesta por dos senoidales y se observa su espectro discreto. "
+        "Como $f_s$ es bajo para la frecuencia máxima presente, aparece aliasing y las componentes "
+        "se superponen en la banda base."
     )
 
-    # Señal de entrada y sistema (misma lógica que la versión original)
-    n = np.arange(0, 40)
-    x = np.zeros_like(n, dtype=float)
-    x[10:15] = 1.0  # pulso rectangular
+    A1 = 1.0
+    f1 = 100.0
+    A2 = 0.7
+    f2 = 300.0
+    fs = 200.0
+    T = 0.08
 
-    M = 5
-    h = np.ones(M) / M  # promediador (pasa bajas)
+    t_disc = np.arange(0, T, 1.0 / fs)
+    x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
 
-    n_h = np.arange(0, len(h))
+    N = len(x_disc)
+    X = np.fft.fft(x_disc)
+    freqs = np.fft.fftfreq(N, d=1.0 / fs)
+    X_shift = np.fft.fftshift(X)
+    freqs_shift = np.fft.fftshift(freqs)
+    X_mag_shift = np.abs(X_shift) / N
+
     fig = make_subplots(
         rows=2,
         cols=1,
         vertical_spacing=0.18,
-        subplot_titles=("Entrada x[n] (pulso)", "Respuesta al impulso h[n] (promediador)"),
+        subplot_titles=(
+            "Señal discreta muestreada",
+            "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
+        ),
     )
     fig.add_trace(
-        go.Scatter(x=n, y=x, mode="markers", name="x[n]"),
+        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
         row=1,
         col=1,
     )
+    base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
     fig.add_trace(
-        go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"),
+        go.Scatter(
+            x=base_x_lines,
+            y=base_y_lines,
+            mode="lines",
+            line=dict(color="#1f77b4", width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=freqs_shift,
+            y=X_mag_shift,
+            mode="markers",
+            name="|X(f)|",
+            marker=dict(color="#1f77b4", size=6),
+        ),
         row=2,
         col=1,
     )
     fig.update_yaxes(title_text="x[n]", row=1, col=1)
-    fig.update_yaxes(title_text="h[n]", row=2, col=1)
-    fig.update_xaxes(title_text="n", row=2, col=1)
+    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, range=[-fs / 2, fs / 2])
     fig.update_layout(
-        height=520,
+        height=540,
         margin=dict(l=40, r=20, t=80, b=60),
         hovermode="x unified",
         showlegend=False,
@@ -2083,20 +2110,20 @@ def render_dinamica2_integrada():
 
     st.markdown("#### Preguntas")
     st.radio(
-        "1) La salida y[n] será:",
-        ["Seleccione una opción", "Más suave que x[n].", "Más ruidosa.", "Con impulsos más agudos."],
+        "1) ¿Se cumple el criterio de Nyquist para esta señal?",
+        ["Seleccione una opción", "Sí, porque fₛ > 2·f_max.", "No, porque fₛ < 2·f_max.", "No aplica."],
         index=0,
         key="g2_dyn2_q1",
     )
     st.radio(
-        "2) ¿Cuál de las siguientes opciones describe mejor lo que hace el sistema?",
-        ["Seleccione una opción", "Un amplificador puro.", "Un filtro suavizador (pasa bajas).", "Un generador de ruido."],
+        "2) La componente de 300 Hz se refleja (aliasing) aproximadamente en:",
+        ["Seleccione una opción", "100 Hz", "300 Hz", "500 Hz"],
         index=0,
         key="g2_dyn2_q2",
     )
     st.radio(
-        "3) ¿Cuál expresión corresponde a la convolución discreta?",
-        ["Seleccione una opción", "y[n] = x[n] + h[n]", "y[n] = x[n] · h[n]", "y[n] = Σ_k x[k]·h[n−k]"],
+        "3) Para evitar aliasing con f_max = 300 Hz, la fₛ mínima debería ser:",
+        ["Seleccione una opción", "400 Hz", "600 Hz", "800 Hz"],
         index=0,
         key="g2_dyn2_q3",
     )
@@ -2236,7 +2263,7 @@ def render_dinamicas_guia2():
     with st.expander("Dinámica 1 — Muestreo y aliasing", expanded=True):
         render_dinamica1_integrada()
 
-    with st.expander("Dinámica 2 — Convolución (entrada–sistema–salida)", expanded=True):
+    with st.expander("Dinámica 2 — Aliasing y análisis en frecuencia", expanded=True):
         render_dinamica2_integrada()
 
     with st.expander("Dinámica 3 — Interpretación de respuesta en frecuencia", expanded=True):
@@ -2280,9 +2307,9 @@ def render_dinamicas_guia2():
         "q3": "fₛ = 8 kHz",
     }
     d2_corr = {
-        "q1": "Más suave que x[n].",
-        "q2": "Un filtro suavizador (pasa bajas).",
-        "q3": "y[n] = Σ_k x[k]·h[n−k]",
+        "q1": "No, porque fₛ < 2·f_max.",
+        "q2": "100 Hz",
+        "q3": "600 Hz",
     }
     d3_corr = {
         "q1": "Las componentes de alta frecuencia.",
@@ -2307,7 +2334,7 @@ def render_dinamicas_guia2():
 
     # Resumen para PDF
     # (Los parámetros de Dinámica 1 se fijan acá para que queden documentados)
-    f_sig_hz = 3000
+    f_sig_hz = 2300
     fs_caso_a_hz = 8000
     fs_caso_b_hz = 600
 
@@ -2325,15 +2352,15 @@ def render_dinamicas_guia2():
     }
 
     res2 = {
-        "titulo": "Dinámica 2 — Sistema LTI y convolución (promedio móvil)",
+        "titulo": "Dinámica 2 — Aliasing y análisis en frecuencia",
         "correctas": c2,
         "total": 3,
         "nota": score2,
-        "key": {"M": 5, "h[n]": "1/M (n=0..M-1)"},
+        "key": {"A1": 1.0, "f1 (Hz)": 100.0, "A2": 0.7, "f2 (Hz)": 300.0, "fs (Hz)": 200.0, "T (s)": 0.08},
         "answers": {
-            "1) ¿Cómo se ve y[n] respecto a x[n]?": d2_ans["q1"],
-            "2) ¿Por qué ocurre ese efecto?": d2_ans["q2"],
-            "3) Expresión correcta de y[n]:": d2_ans["q3"],
+            "1) ¿Se cumple Nyquist?": d2_ans["q1"],
+            "2) Alias de 300 Hz:": d2_ans["q2"],
+            "3) fₛ mínima:": d2_ans["q3"],
         },
     }
 
