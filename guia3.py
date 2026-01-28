@@ -709,11 +709,11 @@ def render_ejemplo2():
         st.markdown(
             "Este ejemplo construye y compara la **PDF** y la **CDF** de tres tipos de variables aleatorias:\n"
             "- Una variable **discreta** (resultado de un dado).\n"
-            "- Una variable **continua** (uniforme en un intervalo).\n"
-            "- Una variable **mixta** (un valor puntual con probabilidad fija y una parte continua).\n\n"
+            "- Una variable **continua** (Gaussiana).\n"
+            "- Una variable **mixta** (un valor puntual con probabilidad fija y una parte Gaussiana).\n\n"
             "**Pasos sugeridos:**\n"
             "1. Selecciona el **número de muestras** a generar.\n"
-            "2. Ajusta el **intervalo** de la parte continua.\n"
+            "2. Ajusta la **media** y la **desviación estándar** de la parte continua.\n"
             "3. Pulsa **Simular** para generar las muestras y graficar PDF y CDF.\n"
             "4. Compara la forma escalonada de la CDF discreta con la CDF continua y mixta."
         )
@@ -722,29 +722,30 @@ def render_ejemplo2():
 
     with col1:
         N = st.slider("Número de muestras", min_value=100, max_value=50000, value=5000, step=100)
-        a = st.number_input("Límite inferior del intervalo continuo a", value=0.0, format="%.2f")
-        b = st.number_input("Límite superior del intervalo continuo b", value=1.0, format="%.2f")
+        mu = st.number_input("Media de la VA continua (μ)", value=0.0, format="%.2f")
+        sigma = st.number_input(
+            "Desviación estándar de la VA continua (σ)",
+            value=1.0,
+            min_value=0.1,
+            format="%.2f",
+        )
+        valor_puntual = st.number_input("Valor puntual de la VA mixta", value=0.0, format="%.2f")
         peso_puntual = st.slider("Probabilidad del valor puntual en VA mixta", 0.0, 0.9, 0.3, 0.05)
         run = st.button("Simular variables", key="g3_ej2_run")
 
     if run:
-        if b <= a:
-            st.error("Debe cumplirse b > a para el intervalo continuo.")
-            return
-
         # Discreta: dado (1..6)
         Xd = np.random.randint(1, 7, size=N)
 
-        # Continua: uniforme en [a, b]
-        Xc = np.random.uniform(a, b, size=N)
+        # Continua: Gaussiana N(mu, sigma^2)
+        Xc = np.random.normal(mu, sigma, size=N)
 
-        # Mixta: valor puntual + uniforme
-        valor_puntual = a  # por simplicidad
+        # Mixta: valor puntual + Gaussiana
         U = np.random.rand(N)
         Xm = np.empty(N)
         mask_p = U < peso_puntual
         Xm[mask_p] = valor_puntual
-        Xm[~mask_p] = np.random.uniform(a, b, size=np.sum(~mask_p))
+        Xm[~mask_p] = np.random.normal(mu, sigma, size=np.sum(~mask_p))
 
         def emp_cdf(x):
             xs = np.sort(x)
@@ -752,7 +753,7 @@ def render_ejemplo2():
             return xs, ys
 
         with col2:
-            tabs = st.tabs(["Discreta (dado)", "Continua (uniforme)", "Mixta"])
+            tabs = st.tabs(["Discreta (dado)", "Continua (gaussiana)", "Mixta (puntual + gaussiana)"])
             plot_theme = _get_plot_theme()
 
             # Discreta
@@ -786,20 +787,26 @@ def render_ejemplo2():
                 fig1.update_yaxes(title_text="Probabilidad", row=1, col=1)
                 fig1.update_xaxes(title_text="x", row=2, col=1)
                 fig1.update_yaxes(title_text="F(x)", row=2, col=1)
-                fig1.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                fig1.update_xaxes(automargin=True, title_standoff=12)
+                fig1.update_yaxes(automargin=True, title_standoff=12)
+                fig1.update_layout(height=440, margin=dict(l=50, r=30, t=80, b=60))
                 _apply_plot_theme(fig1, plot_theme, font_size=12)
                 fig1.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
                 st.plotly_chart(fig1, use_container_width=True, theme=None)
 
             # Continua
             with tabs[1]:
-                xs, ys = emp_cdf(Xc)
+                xs = np.linspace(mu - 4 * sigma, mu + 4 * sigma, 400)
+                pdf_teorica = (1.0 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
+                    -0.5 * ((xs - mu) / sigma) ** 2
+                )
+                cdf_teorica = 0.5 * (1 + np.erf((xs - mu) / (sigma * np.sqrt(2))))
                 fig2 = make_subplots(
                     rows=2,
                     cols=1,
                     shared_xaxes=False,
                     vertical_spacing=0.16,
-                    subplot_titles=("PDF empírica", "CDF empírica"),
+                    subplot_titles=("PDF empírica y teórica", "CDF teórica"),
                 )
                 fig2.add_trace(
                     go.Histogram(
@@ -813,7 +820,22 @@ def render_ejemplo2():
                     col=1,
                 )
                 fig2.add_trace(
-                    go.Scatter(x=xs, y=ys, mode="lines", name="CDF empírica"),
+                    go.Scatter(
+                        x=xs,
+                        y=pdf_teorica,
+                        mode="lines",
+                        name="PDF teórica",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig2.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=cdf_teorica,
+                        mode="lines",
+                        name="CDF teórica",
+                    ),
                     row=2,
                     col=1,
                 )
@@ -821,20 +843,27 @@ def render_ejemplo2():
                 fig2.update_yaxes(title_text="f(x)", row=1, col=1)
                 fig2.update_xaxes(title_text="x", row=2, col=1)
                 fig2.update_yaxes(title_text="F(x)", row=2, col=1)
-                fig2.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                fig2.update_xaxes(automargin=True, title_standoff=12)
+                fig2.update_yaxes(automargin=True, title_standoff=12)
+                fig2.update_layout(height=440, margin=dict(l=50, r=30, t=80, b=60))
                 _apply_plot_theme(fig2, plot_theme, font_size=12)
                 fig2.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
                 st.plotly_chart(fig2, use_container_width=True, theme=None)
 
             # Mixta
             with tabs[2]:
-                xs, ys = emp_cdf(Xm)
+                xs = np.linspace(mu - 4 * sigma, mu + 4 * sigma, 400)
+                pdf_gauss = (1.0 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
+                    -0.5 * ((xs - mu) / sigma) ** 2
+                )
+                cdf_gauss = 0.5 * (1 + np.erf((xs - mu) / (sigma * np.sqrt(2))))
+                cdf_mixta = (1 - peso_puntual) * cdf_gauss + peso_puntual * (xs >= valor_puntual)
                 fig3 = make_subplots(
                     rows=2,
                     cols=1,
                     shared_xaxes=False,
                     vertical_spacing=0.16,
-                    subplot_titles=("PDF empírica", "CDF empírica"),
+                    subplot_titles=("PDF empírica y teórica", "CDF teórica"),
                 )
                 fig3.add_trace(
                     go.Histogram(
@@ -850,10 +879,19 @@ def render_ejemplo2():
                 fig3.add_trace(
                     go.Scatter(
                         x=xs,
-                        y=ys,
+                        y=(1 - peso_puntual) * pdf_gauss,
                         mode="lines",
-                        name="CDF empírica",
-                        line_shape="hv",
+                        name="PDF teórica (parte continua)",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig3.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=cdf_mixta,
+                        mode="lines",
+                        name="CDF teórica",
                     ),
                     row=2,
                     col=1,
@@ -862,7 +900,9 @@ def render_ejemplo2():
                 fig3.update_yaxes(title_text="f(x)", row=1, col=1)
                 fig3.update_xaxes(title_text="x", row=2, col=1)
                 fig3.update_yaxes(title_text="F(x)", row=2, col=1)
-                fig3.update_layout(height=420, margin=dict(l=40, r=20, t=70, b=50))
+                fig3.update_xaxes(automargin=True, title_standoff=12)
+                fig3.update_yaxes(automargin=True, title_standoff=12)
+                fig3.update_layout(height=440, margin=dict(l=50, r=30, t=80, b=60))
                 _apply_plot_theme(fig3, plot_theme, font_size=12)
                 fig3.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
                 st.plotly_chart(fig3, use_container_width=True, theme=None)
@@ -871,12 +911,12 @@ def render_ejemplo2():
             st.markdown(
                 "Caracterizar una variable aleatoria consiste en describir su comportamiento probabilístico mediante funciones que determinan cómo se distribuyen sus valores. La herramienta más general es la función de distribución acumulada (CDF). Cuando la variable es continua, también puede describirse mediante una función de densidad de probabilidad (PDF); y cuando es discreta, mediante una función de delta de diracs que representan una masa de probabilidad.\n\n"
                 "**¿Que se observa en las gráficas?**\n\n"
-                "Las variables discretas producen una **CDF** escalonada con saltos en los valores posibles y un tren de delta diracs para la **PDF** \n\n"
-                "las variables continuas generan una **CDF** suave y una **PDF** que se interpreta como densidad de probabilidad.\n\n "
+                "Las variables discretas producen una **CDF** escalonada con saltos en los valores posibles y un tren de delta diracs para la **PDF**.\n\n"
+                "Las variables continuas Gaussianas generan una **CDF** suave con curvatura característica (no lineal) y una **PDF** en forma de campana que se interpreta como densidad de probabilidad.\n\n"
                 "La variable mixta combina ambas características: presenta un salto en el valor puntual con probabilidad asignada y "
-                "una parte continua en el resto del intervalo.\n\n"
+                "una parte continua Gaussiana que aporta una curvatura suave en la CDF.\n\n"
                 "En general, la función de distribución acumulada (CDF) de una variable aleatoria representa la probabilidad acumulada de que dicha variable tome valores menores o iguales a un cierto umbral. Para variables discretas, la CDF se obtiene sumando las probabilidades de todos los valores posibles hasta ese punto. Para variables continuas, la CDF se define como la integral de la densidad de probabilidad. En el caso mixto, la CDF combina incrementos discretos con tramos continuos, describiendo completamente el comportamiento probabilístico de la variable\n\n"
-                "Para variables continuas, la PDF describe cómo se distribuye la probabilidad “por unidad de valor” y permite obtener probabilidades integrando sobre intervalos; además, es la derivada de la CDF cuando esta es derivable. Para variables discretas no existe PDF como tal, sino una función de delta de diracs que representan una masa de probabilidad que asigna probabilidad a valores puntuales. En variables mixtas, la parte continua se modela con una PDF y la parte discreta con masas puntuales (saltos en la CDF)."
+                "Para variables continuas, la PDF describe cómo se distribuye la probabilidad “por unidad de valor” y permite obtener probabilidades integrando sobre intervalos; además, es la derivada de la CDF cuando esta es derivable. Para variables discretas no existe PDF como tal, sino una función de delta de diracs que representan una masa de probabilidad que asigna probabilidad a valores puntuales. En variables mixtas, la parte continua se modela con una PDF Gaussiana y la parte discreta con masas puntuales (saltos en la CDF)."
             )
 
             st.markdown("#### Preguntas y respuestas")
