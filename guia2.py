@@ -651,21 +651,48 @@ def export_results_pdf_guia2_bytes(student_info: dict, resultados: list, nota_gl
                 c.drawString(75, y, f"- {k}: {_g2_safe_str(v)}")
                 y -= 12
 
-        # Respuestas
+        # Respuestas correctas (si se proveen)
+        correct_answers = res.get("correct_answers") or {}
+        if correct_answers:
+            if y < 110:
+                c.showPage()
+                y = height - 60
+                c.setFont(base_font, 11)
+            c.drawString(60, y, "Respuestas correctas:")
+            y -= 14
+            for k, v in correct_answers.items():
+                if y < 90:
+                    c.showPage()
+                    y = height - 60
+                    c.setFont(base_font, 11)
+                c.drawString(75, y, f"- {k}: {_g2_safe_str(v)}")
+                y -= 12
+
+        # Respuestas del estudiante (marcando correctas/incorrectas)
         answers = res.get("answers") or {}
         if answers:
             if y < 110:
                 c.showPage()
                 y = height - 60
                 c.setFont(base_font, 11)
-            c.drawString(60, y, "Respuestas del estudiante:")
+            c.drawString(60, y, "Respuestas del estudiante (correctas/incorrectas):")
             y -= 14
             for k, v in answers.items():
                 if y < 90:
                     c.showPage()
                     y = height - 60
                     c.setFont(base_font, 11)
-                c.drawString(75, y, f"- {k}: {_g2_safe_str(v)}")
+                expected = correct_answers.get(k)
+                if expected is None:
+                    status = "•"
+                    detail = f"{_g2_safe_str(v)}"
+                else:
+                    is_correct = _g2_safe_str(v) == _g2_safe_str(expected)
+                    status = "✓" if is_correct else "✗"
+                    detail = f"{_g2_safe_str(v)}"
+                    if not is_correct:
+                        detail = f"{detail} (Correcta: {_g2_safe_str(expected)})"
+                c.drawString(75, y, f"- {k}: {status} {detail}")
                 y -= 12
 
         y -= 10
@@ -1532,6 +1559,11 @@ def render_dinamica1():
     fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
     st.plotly_chart(fig, use_container_width=True, theme=None)
 
+    st.markdown(
+        f"**Frecuencia máxima en la Gráfica 1:** $f_{{\\max}} = {f_max:.0f}\\ \\text{{Hz}}$ "
+        "(componente de mayor frecuencia de la señal original)."
+    )
+
     st.markdown("### Preguntas")
 
     with st.form("g2_dyn1_respuestas"):
@@ -2043,6 +2075,11 @@ def render_dinamica1_integrada():
     fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
     st.plotly_chart(fig, use_container_width=True, theme=None)
 
+    st.markdown(
+        f"**Frecuencia máxima en la Gráfica 1:** $f_{{\\max}} = {f_max:.0f}\\ \\text{{Hz}}$ "
+        "(componente de mayor frecuencia de la señal original)."
+    )
+
     st.markdown("#### Preguntas")
     st.radio(
         "1) ¿Qué gráfica corresponde al muestreo exactamente a la frecuencia de Nyquist?",
@@ -2355,15 +2392,35 @@ def render_dinamicas_guia2():
     d3_done = _done(d3_ans)
 
     # Claves (respuestas correctas) — ajustadas a las preguntas de cada dinámica
+    d1_f1 = 400.0
+    d1_f2 = 900.0
+    d1_f_max = max(d1_f1, d1_f2)
+    d1_fs_nyquist = 2.0 * d1_f_max
+    d1_fs_bajo = 1200.0
+    d1_t = 0.012
+
+    d2_a1 = 1.0
+    d2_f1 = 200.0
+    d2_a2 = 0.8
+    d2_f2 = 650.0
+    d2_f_max = max(d2_f1, d2_f2)
+    d2_fs_alias = 800.0
+    d2_fs_nyquist = 2000.0
+    d2_k_range = [-2, 2]
+
+    d3_fs = 2000.0
+    d3_m = 33
+    d3_hp = [1.0, -1.0]
+
     d1_corr = {
-        "q1": "Caso A",
-        "q2": "Falso",
-        "q3": "fₛ = 8 kHz",
+        "q1": "Gráfica 2",
+        "q2": "Gráfica 3",
+        "q3": f"{d1_fs_nyquist:.0f} Hz",
     }
     d2_corr = {
-        "q1": "No, porque fₛ < 2·f_max.",
-        "q2": "100 Hz",
-        "q3": "600 Hz",
+        "q1": "Gráfica 1",
+        "q2": "fₛ ≥ 2·f_max",
+        "q3": f"{2 * d2_f_max:.0f} Hz",
     }
     d3_corr = {
         "q1": "Las componentes de alta frecuencia.",
@@ -2387,22 +2444,55 @@ def render_dinamicas_guia2():
     nota_global = round((score1 + score2 + score3) / 3.0, 2)
 
     # Resumen para PDF
-    # (Los parámetros de Dinámica 1 se fijan acá para que queden documentados)
-    f_sig_hz = 2300
-    fs_caso_a_hz = 8000
-    fs_caso_b_hz = 600
+    # (Los parámetros de cada dinámica se fijan acá para que queden documentados)
+    d1_questions = {
+        "1) ¿Qué gráfica corresponde al muestreo exactamente a la frecuencia de Nyquist?": d1_ans["q1"],
+        "2) ¿En cuál gráfica se observa aliasing por muestreo insuficiente?": d1_ans["q2"],
+        f"3) Si la frecuencia más alta es {d1_f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?": d1_ans["q3"],
+    }
+    d1_correct_text = {
+        "1) ¿Qué gráfica corresponde al muestreo exactamente a la frecuencia de Nyquist?": d1_corr["q1"],
+        "2) ¿En cuál gráfica se observa aliasing por muestreo insuficiente?": d1_corr["q2"],
+        f"3) Si la frecuencia más alta es {d1_f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?": d1_corr["q3"],
+    }
+
+    d2_questions = {
+        "1) ¿En cuál gráfica se observa aliasing por superposición de réplicas?": d2_ans["q1"],
+        "2) ¿Qué condición se cumple en la Gráfica 2 para evitar aliasing?": d2_ans["q2"],
+        f"3) Si f_max = {d2_f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?": d2_ans["q3"],
+    }
+    d2_correct_text = {
+        "1) ¿En cuál gráfica se observa aliasing por superposición de réplicas?": d2_corr["q1"],
+        "2) ¿Qué condición se cumple en la Gráfica 2 para evitar aliasing?": d2_corr["q2"],
+        f"3) Si f_max = {d2_f_max:.0f} Hz, ¿cuál es la fₛ mínima para evitar aliasing?": d2_corr["q3"],
+    }
+
+    d3_questions = {
+        "1) Si aplicamos el filtro pasa bajas, ¿qué parte del espectro de la señal se atenúa más?": d3_ans["q1"],
+        "2) ¿Qué gráfico de salida |Y(f)| correspondería a un filtro pasa bajas ideal?": d3_ans["q2"],
+        "3) ¿Qué tipo de filtro sería más apropiado para eliminar ruido de alta frecuencia superpuesto a una señal de baja frecuencia?": d3_ans["q3"],
+    }
+    d3_correct_text = {
+        "1) Si aplicamos el filtro pasa bajas, ¿qué parte del espectro de la señal se atenúa más?": d3_corr["q1"],
+        "2) ¿Qué gráfico de salida |Y(f)| correspondería a un filtro pasa bajas ideal?": d3_corr["q2"],
+        "3) ¿Qué tipo de filtro sería más apropiado para eliminar ruido de alta frecuencia superpuesto a una señal de baja frecuencia?": d3_corr["q3"],
+    }
 
     res1 = {
         "titulo": "Dinámica 1 — Muestreo y aliasing",
         "correctas": c1,
         "total": 3,
         "nota": score1,
-        "key": {"f (Hz)": f_sig_hz, "fs Caso A (Hz)": fs_caso_a_hz, "fs Caso B (Hz)": fs_caso_b_hz},
-        "answers": {
-            "1) ¿Cuál caso evita el aliasing?": d1_ans["q1"],
-            "2) 'Aumentar la duración T corrige el aliasing'": d1_ans["q2"],
-            "3) Para evitar aliasing, elegir:": d1_ans["q3"],
+        "key": {
+            "f1 (Hz)": d1_f1,
+            "f2 (Hz)": d1_f2,
+            "f_max (Hz)": d1_f_max,
+            "f_s Nyquist (Hz)": d1_fs_nyquist,
+            "f_s bajo (Hz)": d1_fs_bajo,
+            "T (s)": d1_t,
         },
+        "correct_answers": d1_correct_text,
+        "answers": d1_questions,
     }
 
     res2 = {
@@ -2410,12 +2500,18 @@ def render_dinamicas_guia2():
         "correctas": c2,
         "total": 3,
         "nota": score2,
-        "key": {"A1": 1.0, "f1 (Hz)": 100.0, "A2": 0.7, "f2 (Hz)": 300.0, "fs (Hz)": 200.0, "T (s)": 0.08},
-        "answers": {
-            "1) ¿Se cumple Nyquist?": d2_ans["q1"],
-            "2) Alias de 300 Hz:": d2_ans["q2"],
-            "3) fₛ mínima:": d2_ans["q3"],
+        "key": {
+            "A1": d2_a1,
+            "f1 (Hz)": d2_f1,
+            "A2": d2_a2,
+            "f2 (Hz)": d2_f2,
+            "f_max (Hz)": d2_f_max,
+            "f_s alias (Hz)": d2_fs_alias,
+            "f_s Nyquist (Hz)": d2_fs_nyquist,
+            "k range": d2_k_range,
         },
+        "correct_answers": d2_correct_text,
+        "answers": d2_questions,
     }
 
     res3 = {
@@ -2423,12 +2519,13 @@ def render_dinamicas_guia2():
         "correctas": c3,
         "total": 3,
         "nota": score3,
-        "key": {"Tipo": "Pasa bajas"},
-        "answers": {
-            "1) ¿Qué se atenúa?": d3_ans["q1"],
-            "2) Definición de filtro pasa bajas:": d3_ans["q2"],
-            "3) Ejemplo típico:": d3_ans["q3"],
+        "key": {
+            "f_s (Hz)": d3_fs,
+            "M (coeficientes)": d3_m,
+            "Filtro pasa altas (h[n])": d3_hp,
         },
+        "correct_answers": d3_correct_text,
+        "answers": d3_questions,
     }
 
     resultados = [res1, res2, res3]
