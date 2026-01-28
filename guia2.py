@@ -1224,9 +1224,9 @@ def render_ejemplo4():
         # Señal con varias sinusoides
         t = np.arange(0, T, 1.0 / fs)
         x = (
-                np.sin(2 * np.pi * 100 * t) +
-                0.7 * np.sin(2 * np.pi * 400 * t) +
-                0.5 * np.sin(2 * np.pi * 800 * t)
+            np.sin(2 * np.pi * 100 * t)
+            + 0.7 * np.sin(2 * np.pi * 400 * t)
+            + 0.5 * np.sin(2 * np.pi * 800 * t)
         )
 
         # Definir h[n]
@@ -1240,22 +1240,24 @@ def render_ejemplo4():
             h[1] = -1.0
         else:
             alpha = 0.3
-            h = alpha ** np.arange(M)
+            h = (1 - alpha) * (alpha ** np.arange(M))
 
-        # Señal de salida en el tiempo (convolución)
-        y_time = np.convolve(x, h, mode="same")
+        # Señal de salida en el tiempo (convolución lineal)
+        y_time = np.convolve(x, h, mode="full")
+        t_out = np.arange(0, len(y_time)) / fs
 
-        # FFT de x y h (zero-padding a N)
-        H = np.fft.fft(h, n=N)
-        X = np.fft.fft(x)
+        # FFT de x y h (zero-padding para coincidir con la convolución lineal)
+        fft_len = N + M - 1
+        X = np.fft.fft(x, n=fft_len)
+        H = np.fft.fft(h, n=fft_len)
         Y = X * H
 
-        freqs = np.fft.fftfreq(N, d=1.0 / fs)
+        freqs = np.fft.fftfreq(fft_len, d=1.0 / fs)
         idx_pos = freqs >= 0
         fpos = freqs[idx_pos]
-        Xmag = np.abs(X[idx_pos]) / N
+        Xmag = np.abs(X[idx_pos]) / fft_len
         Hmag = np.abs(H[idx_pos])
-        Ymag = np.abs(Y[idx_pos]) / N
+        Ymag = np.abs(Y[idx_pos]) / fft_len
 
         fig = make_subplots(
             rows=5,
@@ -1363,7 +1365,7 @@ def render_ejemplo4():
         )
         fig.add_trace(
             go.Scatter(
-                x=t,
+                x=t_out,
                 y=y_time,
                 mode="lines",
                 name="y(t)",
