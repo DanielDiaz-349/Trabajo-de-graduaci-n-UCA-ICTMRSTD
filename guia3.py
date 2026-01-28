@@ -11,6 +11,7 @@ import os
 import datetime
 import importlib.util
 import io
+import math
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
@@ -98,6 +99,13 @@ def _apply_plot_theme(fig, theme, font_size=12):
         tickfont=dict(color=theme["font_color"]),
         title_font=dict(color=theme["font_color"]),
     )
+
+
+def _erf(values):
+    arr = np.asarray(values)
+    if arr.ndim == 0:
+        return math.erf(float(arr))
+    return np.vectorize(math.erf)(arr)
 
 # --- Opcional: generación de PDF (igual estilo Guía 1 y 2) ---
 REPORTLAB_AVAILABLE = importlib.util.find_spec("reportlab") is not None
@@ -713,7 +721,7 @@ def render_ejemplo2():
             "- Una variable **mixta** (un valor puntual con probabilidad fija y una parte Gaussiana).\n\n"
             "**Pasos sugeridos:**\n"
             "1. Selecciona el **número de muestras** a generar.\n"
-            "2. Ajusta la **media** y la **desviación estándar** de la parte continua.\n"
+            "2. Ajusta la **media** y la **varianza (σ²)** de la parte continua.\n"
             "3. Pulsa **Simular** para generar las muestras y graficar PDF y CDF.\n"
             "4. Compara la forma escalonada de la CDF discreta con la CDF continua y mixta."
         )
@@ -723,10 +731,10 @@ def render_ejemplo2():
     with col1:
         N = st.slider("Número de muestras", min_value=100, max_value=50000, value=5000, step=100)
         mu = st.number_input("Media de la VA continua (μ)", value=0.0, format="%.2f")
-        sigma = st.number_input(
-            "Desviación estándar de la VA continua (σ)",
+        sigma2 = st.number_input(
+            "Varianza de la VA continua (σ²)",
             value=1.0,
-            min_value=0.1,
+            min_value=0.01,
             format="%.2f",
         )
         valor_puntual = st.number_input("Valor puntual de la VA mixta", value=0.0, format="%.2f")
@@ -734,6 +742,7 @@ def render_ejemplo2():
         run = st.button("Simular variables", key="g3_ej2_run")
 
     if run:
+        sigma = np.sqrt(sigma2)
         # Discreta: dado (1..6)
         Xd = np.random.randint(1, 7, size=N)
 
@@ -764,7 +773,7 @@ def render_ejemplo2():
                     rows=2,
                     cols=1,
                     shared_xaxes=False,
-                    vertical_spacing=0.16,
+                    vertical_spacing=0.22,
                     subplot_titles=("PDF empírica", "CDF empírica"),
                 )
                 fig1.add_trace(
@@ -792,6 +801,7 @@ def render_ejemplo2():
                 fig1.update_layout(height=440, margin=dict(l=50, r=30, t=80, b=60))
                 _apply_plot_theme(fig1, plot_theme, font_size=12)
                 fig1.update_annotations(font=dict(color=plot_theme["font_color"], size=12))
+                fig1.update_annotations(selector=dict(text="CDF empírica"), yshift=-10)
                 st.plotly_chart(fig1, use_container_width=True, theme=None)
 
             # Continua
@@ -800,7 +810,7 @@ def render_ejemplo2():
                 pdf_teorica = (1.0 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
                     -0.5 * ((xs - mu) / sigma) ** 2
                 )
-                cdf_teorica = 0.5 * (1 + np.erf((xs - mu) / (sigma * np.sqrt(2))))
+                cdf_teorica = 0.5 * (1 + _erf((xs - mu) / (sigma * np.sqrt(2))))
                 fig2 = make_subplots(
                     rows=2,
                     cols=1,
@@ -856,7 +866,7 @@ def render_ejemplo2():
                 pdf_gauss = (1.0 / (sigma * np.sqrt(2 * np.pi))) * np.exp(
                     -0.5 * ((xs - mu) / sigma) ** 2
                 )
-                cdf_gauss = 0.5 * (1 + np.erf((xs - mu) / (sigma * np.sqrt(2))))
+                cdf_gauss = 0.5 * (1 + _erf((xs - mu) / (sigma * np.sqrt(2))))
                 cdf_mixta = (1 - peso_puntual) * cdf_gauss + peso_puntual * (xs >= valor_puntual)
                 fig3 = make_subplots(
                     rows=2,
