@@ -784,6 +784,8 @@ def render_ejemplo2():
             ys = np.arange(1, len(xs) + 1) / len(xs)
             return xs, ys
 
+        nbins_empiricos = int(np.clip(np.sqrt(N), 12, 120))
+
         with col2:
             tabs = st.tabs(["Discreta (dado)", "Continua (gaussiana)", "Mixta (puntual + gaussiana)"])
             plot_theme = _get_plot_theme()
@@ -834,7 +836,6 @@ def render_ejemplo2():
                     -0.5 * ((xs - mu) / sigma) ** 2
                 )
                 cdf_teorica = 0.5 * (1 + _erf((xs - mu) / (sigma * np.sqrt(2))))
-                pdf_empirica = _kde_gaussian(Xc, xs)
                 fig2 = make_subplots(
                     rows=2,
                     cols=1,
@@ -843,11 +844,12 @@ def render_ejemplo2():
                     subplot_titles=("PDF empírica y teórica", "CDF teórica"),
                 )
                 fig2.add_trace(
-                    go.Scatter(
-                        x=xs,
-                        y=pdf_empirica,
-                        mode="lines",
-                        name="PDF empírica (KDE)",
+                    go.Histogram(
+                        x=Xc,
+                        nbinsx=nbins_empiricos,
+                        histnorm="probability density",
+                        name="PDF empírica",
+                        opacity=0.7,
                     ),
                     row=1,
                     col=1,
@@ -901,7 +903,7 @@ def render_ejemplo2():
                 fig3.add_trace(
                     go.Histogram(
                         x=Xm,
-                        nbinsx=40,
+                        nbinsx=nbins_empiricos,
                         histnorm="probability density",
                         name="PDF empírica",
                         opacity=0.7,
