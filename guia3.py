@@ -107,6 +107,29 @@ def _erf(values):
         return math.erf(float(arr))
     return np.vectorize(math.erf)(arr)
 
+
+def _kde_gaussian(samples, grid, chunk_size=5000):
+    samples = np.asarray(samples)
+    n = samples.size
+    if n == 0:
+        return np.zeros_like(grid, dtype=float)
+
+    std = np.std(samples, ddof=1) if n > 1 else 0.0
+    if std == 0.0:
+        grid_std = np.std(grid)
+        std = grid_std if grid_std > 0 else 1.0
+
+    bandwidth = 1.06 * std * (n ** (-1 / 5))
+    bandwidth = max(bandwidth, 1e-3)
+
+    coeff = 1.0 / (np.sqrt(2 * np.pi) * bandwidth * n)
+    kde = np.zeros_like(grid, dtype=float)
+    for start in range(0, n, chunk_size):
+        chunk = samples[start : start + chunk_size]
+        diff = (grid[:, None] - chunk[None, :]) / bandwidth
+        kde += np.sum(np.exp(-0.5 * diff**2), axis=1)
+    return coeff * kde
+
 # --- Opcional: generación de PDF (igual estilo Guía 1 y 2) ---
 REPORTLAB_AVAILABLE = importlib.util.find_spec("reportlab") is not None
 if REPORTLAB_AVAILABLE:
@@ -811,6 +834,7 @@ def render_ejemplo2():
                     -0.5 * ((xs - mu) / sigma) ** 2
                 )
                 cdf_teorica = 0.5 * (1 + _erf((xs - mu) / (sigma * np.sqrt(2))))
+                pdf_empirica = _kde_gaussian(Xc, xs)
                 fig2 = make_subplots(
                     rows=2,
                     cols=1,
@@ -819,12 +843,11 @@ def render_ejemplo2():
                     subplot_titles=("PDF empírica y teórica", "CDF teórica"),
                 )
                 fig2.add_trace(
-                    go.Histogram(
-                        x=Xc,
-                        nbinsx=40,
-                        histnorm="probability density",
-                        name="PDF empírica",
-                        opacity=0.7,
+                    go.Scatter(
+                        x=xs,
+                        y=pdf_empirica,
+                        mode="lines",
+                        name="PDF empírica (KDE)",
                     ),
                     row=1,
                     col=1,
