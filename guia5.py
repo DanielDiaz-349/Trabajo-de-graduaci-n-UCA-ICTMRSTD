@@ -203,22 +203,108 @@ def _rng(seed: int) -> np.random.Generator:
 # Utilidades Plotly (tema legible)
 # ----------------------------
 
-def _plotly_layout(fig: go.Figure, title: str, height: int = 380, showlegend: bool = True) -> go.Figure:
+def _get_plot_theme() -> Dict[str, str]:
+    ui_theme = st.session_state.get("ui_theme")
+    if ui_theme:
+        theme_name = ui_theme.lower()
+    else:
+        base_theme = (st.get_option("theme.base") or "light").lower()
+        theme_name = "obscuro" if base_theme == "dark" else "blanco"
+
+    if theme_name == "obscuro":
+        return {
+            "paper_bgcolor": "#0f1113",
+            "plot_bgcolor": "#2b2f36",
+            "font_color": "#ffffff",
+            "grid_color": "#444444",
+            "axis_color": "#ffffff",
+            "hover_bg": "#2b2f36",
+            "hover_font": "#ffffff",
+        }
+    if theme_name == "rosa":
+        return {
+            "paper_bgcolor": "#fff6fb",
+            "plot_bgcolor": "#ffffff",
+            "font_color": "#330033",
+            "grid_color": "#f0c6dc",
+            "axis_color": "#330033",
+            "hover_bg": "#ffd6eb",
+            "hover_font": "#330033",
+        }
+    return {
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "font_color": "#000000",
+        "grid_color": "#d9d9d9",
+        "axis_color": "#000000",
+        "hover_bg": "#ffffff",
+        "hover_font": "#000000",
+    }
+
+
+def _apply_plot_theme(fig: go.Figure, theme: Dict[str, str], font_size: int = 12) -> None:
     fig.update_layout(
-        title=dict(text=title, x=0.02, xanchor="left", font=dict(size=16, color="black")),
+        paper_bgcolor=theme["paper_bgcolor"],
+        plot_bgcolor=theme["plot_bgcolor"],
+        font=dict(color=theme["font_color"], size=font_size),
+        hoverlabel=dict(bgcolor=theme["hover_bg"], font=dict(color=theme["hover_font"])),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        showline=True,
+        linecolor=theme["axis_color"],
+        linewidth=2,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        showline=True,
+        linecolor=theme["axis_color"],
+        linewidth=2,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+
+
+def _plotly_layout(
+    fig: go.Figure,
+    title: str,
+    height: int = 380,
+    showlegend: bool = True,
+    theme: Dict[str, str] | None = None,
+) -> go.Figure:
+    theme = theme or _get_plot_theme()
+    fig.update_layout(
+        title=dict(text=title, x=0.02, xanchor="left", font=dict(size=16, color=theme["font_color"])),
         height=height,
         margin=dict(l=55, r=25, t=55, b=50),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1) if showlegend else dict(),
+        legend=(
+            dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(color=theme["font_color"]),
+                bgcolor=theme["paper_bgcolor"],
+                bordercolor=theme["axis_color"],
+                borderwidth=1,
+            )
+            if showlegend
+            else dict()
+        ),
         hovermode="closest",
-        hoverlabel=dict(bgcolor="white", font_color="black"),
-        font=dict(color="black"),
     )
-    fig.update_xaxes(showline=True, linewidth=2, linecolor="black", mirror=True, ticks="outside", tickfont=dict(size=12, color="black"))
-    fig.update_yaxes(showline=True, linewidth=2, linecolor="black", mirror=True, ticks="outside", tickfont=dict(size=12, color="black"))
-    fig.update_xaxes(gridcolor="rgba(0,0,0,0.15)")
-    fig.update_yaxes(gridcolor="rgba(0,0,0,0.15)")
+    _apply_plot_theme(fig, theme, font_size=12)
     return fig
 
 
@@ -226,51 +312,30 @@ def _line(fig: go.Figure, x, y, name: str, color: str, row: int = 1, col: int = 
     fig.add_trace(go.Scatter(x=x, y=y, mode=mode, name=name, line=dict(color=color, width=2.5)), row=row, col=col)
 
 
-def _force_plotly_readable(fig, height: int = 420):
+def _force_plotly_readable(fig, theme: Dict[str, str], height: int = 420):
     fig.update_layout(
         height=height,
-        template="plotly_white",
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="black"),
-        hoverlabel=dict(bgcolor="white", font_color="black"),
         margin=dict(l=60, r=20, t=95, b=55),
         legend=dict(
             orientation="h",
             yanchor="bottom", y=1.02,
             xanchor="right", x=1.0,
-            font=dict(color="black", size=12),
-            bgcolor="rgba(255,255,255,0.95)",
-            bordercolor="rgba(0,0,0,0.25)",
+            font=dict(color=theme["font_color"], size=12),
+            bgcolor=theme["paper_bgcolor"],
+            bordercolor=theme["axis_color"],
             borderwidth=1,
         ),
     )
-
-    fig.update_xaxes(
-        showline=True, linecolor="black", linewidth=2,
-        ticks="outside", tickcolor="black",
-        tickfont=dict(color="black"),
-        title=dict(font=dict(color="black")),
-        gridcolor="rgba(0,0,0,0.15)",
-        zeroline=False,
-    )
-    fig.update_yaxes(
-        showline=True, linecolor="black", linewidth=2,
-        ticks="outside", tickcolor="black",
-        tickfont=dict(color="black"),
-        title=dict(font=dict(color="black")),
-        gridcolor="rgba(0,0,0,0.15)",
-        zeroline=False,
-    )
+    _apply_plot_theme(fig, theme, font_size=12)
 
     if hasattr(fig.layout, "annotations") and fig.layout.annotations:
         for ann in fig.layout.annotations:
             if isinstance(ann, dict):
-                ann["font"] = dict(color="black")
+                ann["font"] = dict(color=theme["font_color"])
                 ann["x"] = 0.5
                 ann["xanchor"] = "center"
             else:
-                ann.font = dict(color="black")
+                ann.font = dict(color=theme["font_color"])
                 ann.x = 0.5
                 ann.xanchor = "center"
 
@@ -281,6 +346,7 @@ def _force_plotly_readable(fig, height: int = 420):
 
 def render_ejemplo1():
     st.subheader("Ejemplo 1 — Cadena digital: bits → modulación → AWGN → decisión")
+    plot_theme = _get_plot_theme()
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
@@ -383,7 +449,7 @@ def render_ejemplo1():
 
     bit_edges = np.arange(0, Nb + 1) * Tb
     for xedge in bit_edges:
-        fig.add_vline(x=float(xedge), line_width=1, line_dash="dot", line_color="rgba(0,0,0,0.25)")
+        fig.add_vline(x=float(xedge), line_width=1, line_dash="dot", line_color=plot_theme["grid_color"])
 
     fig.add_trace(
         go.Scatter(
@@ -436,30 +502,24 @@ def render_ejemplo1():
         for ann in fig.layout.annotations:
             ann["x"] = 0.5
             ann["xanchor"] = "center"
+            ann["font"] = dict(color=plot_theme["font_color"])
 
     fig.update_layout(
-        template="plotly_white",
         title="Cadena digital: bits → modulación → AWGN → decisión",
         height=1120,
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="black", size=14),
-        hoverlabel=dict(bgcolor="white", font_color="black"),
+        font=dict(color=plot_theme["font_color"], size=14),
         legend=dict(
             orientation="h",
             yanchor="top", y=-0.12,
             xanchor="right", x=1.0,
-            font=dict(color="black", size=13),
-            bgcolor="rgba(255,255,255,0.95)",
-            bordercolor="black",
+            font=dict(color=plot_theme["font_color"], size=13),
+            bgcolor=plot_theme["paper_bgcolor"],
+            bordercolor=plot_theme["axis_color"],
             borderwidth=1,
         ),
         margin=dict(l=70, r=20, t=90, b=95),
     )
-    fig.update_xaxes(showline=True, linecolor="black", linewidth=2,
-                     gridcolor="rgba(0,0,0,0.15)", tickfont=dict(size=13))
-    fig.update_yaxes(showline=True, linecolor="black", linewidth=2,
-                     gridcolor="rgba(0,0,0,0.15)", tickfont=dict(size=13))
+    _apply_plot_theme(fig, plot_theme, font_size=13)
 
     # ---- Imagen + gráficas juntas (imagen primero) ----
     # Buscar la imagen en rutas RELATIVAS al repo (compatibles con Streamlit Cloud)
@@ -533,6 +593,7 @@ def render_ejemplo1():
 
 def render_ejemplo2():
     st.subheader("Ejemplo 2 — Desempeño óptimo de BPSK en AWGN: BER vs $E_b/N_0$")
+    plot_theme = _get_plot_theme()
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
@@ -568,36 +629,15 @@ def render_ejemplo2():
         st.info("Pulsa **Simular** para generar la curva BER de BPSK.")
         return
 
-    def _force_plotly_readable_local(fig, height=420):
+    def _force_plotly_readable_local(fig, theme, height=420):
         fig.update_layout(
-            template="plotly_white",
             height=height,
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            font=dict(color="black"),
-            legend=dict(font=dict(color="black")),
-            hoverlabel=dict(bgcolor="white", font_color="black"),
             margin=dict(l=60, r=20, t=70, b=55),
         )
-        fig.update_xaxes(
-            showline=True,
-            linecolor="black",
-            gridcolor="rgba(0,0,0,0.15)",
-            zeroline=False,
-            tickfont=dict(color="black"),
-            title=dict(font=dict(color="black")),
-        )
-        fig.update_yaxes(
-            showline=True,
-            linecolor="black",
-            gridcolor="rgba(0,0,0,0.15)",
-            zeroline=False,
-            tickfont=dict(color="black"),
-            title=dict(font=dict(color="black")),
-        )
+        _apply_plot_theme(fig, theme, font_size=12)
         if hasattr(fig.layout, "annotations") and fig.layout.annotations:
             for ann in fig.layout.annotations:
-                ann["font"] = dict(color="black")
+                ann["font"] = dict(color=theme["font_color"])
         return fig
 
     seed = st.session_state.get("g5_e2_seed", 22222)
@@ -642,11 +682,11 @@ def render_ejemplo2():
     fig.update_xaxes(title_text="Eb/N0 (dB)")
 
     try:
-        _plotly_layout(fig, "BPSK en AWGN: BER vs Eb/N0", height=420, showlegend=True)
+        _plotly_layout(fig, "BPSK en AWGN: BER vs Eb/N0", height=420, showlegend=True, theme=plot_theme)
     except Exception:
         fig.update_layout(title="BPSK en AWGN: BER vs Eb/N0")
 
-    _force_plotly_readable(fig, height=420)
+    _force_plotly_readable(fig, plot_theme, height=420)
     st.plotly_chart(fig, use_container_width=True)
 
     if n_zeros > 0:
@@ -671,17 +711,17 @@ def render_ejemplo2():
         figH = go.Figure()
         figH.add_trace(go.Histogram(x=r0, nbinsx=60, name="r | bit 0", opacity=0.55, marker_color="#1f77b4"))
         figH.add_trace(go.Histogram(x=r1, nbinsx=60, name="r | bit 1", opacity=0.55, marker_color="#ff7f0e"))
-        figH.add_vline(x=0.0, line_width=3, line_dash="dash", line_color="black")
+        figH.add_vline(x=0.0, line_width=3, line_dash="dash", line_color=plot_theme["axis_color"])
         figH.update_xaxes(title_text="Estadístico (muestra)")
         figH.update_yaxes(title_text="Frecuencia relativa")
 
         try:
             _plotly_layout(figH, f"Histogramas (BPSK) para Eb/N0={float(punto_hist):.1f} dB",
-                          height=380, showlegend=True)
+                          height=380, showlegend=True, theme=plot_theme)
         except Exception:
             figH.update_layout(title=f"Histogramas (BPSK) para Eb/N0={float(punto_hist):.1f} dB")
 
-        _force_plotly_readable_local(figH, height=380)
+        _force_plotly_readable_local(figH, plot_theme, height=380)
         st.plotly_chart(figH, use_container_width=True)
 
     with st.expander("Explicación, preguntas y respuestas", expanded=True):
@@ -721,6 +761,7 @@ def render_ejemplo2():
 
 def render_ejemplo3():
     st.subheader("Ejemplo 3 — BFSK en AWGN: efecto de la separación en frecuencia")
+    plot_theme = _get_plot_theme()
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
@@ -804,8 +845,8 @@ def render_ejemplo3():
     fig.update_yaxes(type="log", title_text="BER (log)")
     fig.update_xaxes(title_text="Eb/N0 (dB)")
 
-    _plotly_layout(fig, "BFSK en AWGN: BER vs Eb/N0", height=440, showlegend=True)
-    _force_plotly_readable(fig, height=440)
+    _plotly_layout(fig, "BFSK en AWGN: BER vs Eb/N0", height=440, showlegend=True, theme=plot_theme)
+    _force_plotly_readable(fig, plot_theme, height=440)
     st.plotly_chart(fig, use_container_width=True)
 
     if ver_hist:
@@ -828,17 +869,17 @@ def render_ejemplo3():
         figH = go.Figure()
         figH.add_trace(go.Histogram(x=d0, nbinsx=60, name="z1 - z0 | bit 0", opacity=0.55, marker_color="#1f77b4"))
         figH.add_trace(go.Histogram(x=d1, nbinsx=60, name="z1 - z0 | bit 1", opacity=0.55, marker_color="#ff7f0e"))
-        figH.add_vline(x=0.0, line_width=3, line_dash="dash", line_color="black")
+        figH.add_vline(x=0.0, line_width=3, line_dash="dash", line_color=plot_theme["axis_color"])
         figH.update_xaxes(title_text="Estadístico (z1 - z0)")
         figH.update_yaxes(title_text="Frecuencia relativa")
 
         try:
             _plotly_layout(figH, f"Histogramas (BFSK) para Eb/N0={float(punto_hist):.1f} dB",
-                          height=380, showlegend=True)
+                          height=380, showlegend=True, theme=plot_theme)
         except Exception:
             figH.update_layout(title=f"Histogramas (BFSK) para Eb/N0={float(punto_hist):.1f} dB")
 
-        _force_plotly_readable(figH, height=380)
+        _force_plotly_readable(figH, plot_theme, height=380)
         st.plotly_chart(figH, use_container_width=True)
 
     with st.expander("Explicación, preguntas y respuestas", expanded=True):
@@ -1055,6 +1096,7 @@ def _dyn1_key(seed: int) -> Dict[str, Any]:
 
 def _render_dyn1():
     st.markdown("### Dinámica 1 — Detector óptimo: histogramas y umbral")
+    plot_theme = _get_plot_theme()
 
     state = st.session_state.guia5_dinamicas
     if state["dyn1"]["seed"] is None:
@@ -1081,10 +1123,10 @@ def _render_dyn1():
     fig = go.Figure()
     fig.add_trace(go.Histogram(x=Y0, nbinsx=50, name="Y | bit 0", opacity=0.55, marker_color="#1f77b4"))
     fig.add_trace(go.Histogram(x=Y1, nbinsx=50, name="Y | bit 1", opacity=0.55, marker_color="#ff7f0e"))
-    fig.add_vline(x=key["gamma"], line_width=3, line_dash="dash", line_color="black")
+    fig.add_vline(x=key["gamma"], line_width=3, line_dash="dash", line_color=plot_theme["axis_color"])
     fig.update_xaxes(title_text="Y")
     fig.update_yaxes(title_text="Frecuencia relativa")
-    _plotly_layout(fig, "Histogramas y umbral", height=360, showlegend=True)
+    _plotly_layout(fig, "Histogramas y umbral", height=360, showlegend=True, theme=plot_theme)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("#### Preguntas")
@@ -1131,6 +1173,7 @@ def _dyn2_key(seed: int) -> Dict[str, Any]:
 
 def _render_dyn2():
     st.markdown("### Dinámica 2 — BPSK: lectura de BER vs $E_b/N_0$")
+    plot_theme = _get_plot_theme()
 
     state = st.session_state.guia5_dinamicas
     if state["dyn2"]["seed"] is None:
@@ -1153,10 +1196,10 @@ def _render_dyn2():
     th = ber_teorica_bpsk(10 ** (ebn0 / 10.0))
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=ebn0, y=th, mode="lines+markers", name="BER teórica", line=dict(color="#1f77b4", width=3)))
-    fig.add_vline(x=key["EbN0_dB"], line_width=3, line_dash="dash", line_color="black")
+    fig.add_vline(x=key["EbN0_dB"], line_width=3, line_dash="dash", line_color=plot_theme["axis_color"])
     fig.update_yaxes(type="log", title_text="BER")
     fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
-    _plotly_layout(fig, "Curva teórica (BPSK)", height=360, showlegend=False)
+    _plotly_layout(fig, "Curva teórica (BPSK)", height=360, showlegend=False, theme=plot_theme)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("#### Preguntas")
@@ -1185,6 +1228,7 @@ def _dyn3_key(seed: int) -> Dict[str, Any]:
 
 def _render_dyn3():
     st.markdown("### Dinámica 3 — BFSK: correlación y desempeño")
+    plot_theme = _get_plot_theme()
 
     state = st.session_state.guia5_dinamicas
     if state["dyn3"]["seed"] is None:
@@ -1209,7 +1253,7 @@ def _render_dyn3():
     fig.add_trace(go.Scatter(x=ebn0, y=th, mode="lines+markers", name="BER teórica", line=dict(color="#ff7f0e", width=3)))
     fig.update_yaxes(type="log", title_text="BER")
     fig.update_xaxes(title_text="$E_b/N_0$ (dB)")
-    _plotly_layout(fig, "Curva teórica (BFSK) para el caso", height=360, showlegend=False)
+    _plotly_layout(fig, "Curva teórica (BFSK) para el caso", height=360, showlegend=False, theme=plot_theme)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("#### Preguntas")
