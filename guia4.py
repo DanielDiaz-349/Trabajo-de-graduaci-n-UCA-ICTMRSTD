@@ -384,6 +384,79 @@ def render_ejemplo1():
 
         st.success("Simulación generada. Revisa las gráficas y la interpretación.")
 
+    with col1:
+        if state["ready"]:
+            t = state["t"]
+            x0 = state["x0"]
+            X = state["X"]
+            centers = state["centers"]
+            hist1 = state["hist1"]
+            hist_all = state["hist_all"]
+            show_pct = state["show_pct"]
+
+            # Estética “fuerte” (líneas más gruesas + fuente pesada)
+            axis_title_font = dict(family="Arial Black", size=14, color="black")
+            tick_font = dict(family="Arial Black", size=12, color="black")
+
+            # --- Figura 2: histogramas (interactiva) ---
+            fig_hist = go.Figure()
+            fig_hist.add_trace(go.Scatter(
+                x=centers, y=hist1,
+                mode="lines",
+                line=dict(width=2, color="blue"),
+                name="Histograma (1 realización)"
+            ))
+
+            fig_hist.add_trace(go.Scatter(
+                x=centers, y=hist_all,
+                mode="lines",
+                line=dict(width=2, color="darkorange"),  # o "red"
+                name=f"Histograma (todas, Nᵣ={state['params']['Nr']})"
+            ))
+
+            fig_hist.update_layout(
+                title=dict(text="Histograma(s) (densidad)", font=dict(family="Arial Black", size=16, color="black")),
+                height=330,
+                margin=dict(l=55, r=20, t=65, b=55),
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="left", x=0),
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                font=dict(family="Arial Black", color="black"),
+                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+            )
+            fig_hist.update_xaxes(
+                title_text="Valor",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True,
+                gridcolor="lightgray",
+                showline=True,
+                linewidth=2,
+                linecolor="black",
+                ticks="outside",
+                tickwidth=2,
+            )
+            fig_hist.update_yaxes(
+                title_text="Densidad",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True,
+                gridcolor="lightgray",
+                showline=True,
+                linewidth=2,
+                linecolor="black",
+                ticks="outside",
+                tickwidth=2,
+            )
+
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+            st.markdown(
+                f"**Estimación (1 realización):** m = {state['mu_hat_1']:.3f}, σ̂² = {state['var_hat_1']:.3f}\n\n"
+                f"**Estimación (todas las realizaciones):** m = {state['mu_hat_all']:.3f}, σ̂² = {state['var_hat_all']:.3f}"
+            )
+
     with col2:
         if not state["ready"]:
             st.info("Ajusta los parámetros y pulsa **Simular** para generar las gráficas.")
@@ -391,9 +464,6 @@ def render_ejemplo1():
             t = state["t"]
             x0 = state["x0"]
             X = state["X"]
-            centers = state["centers"]
-            hist1 = state["hist1"]
-            hist_all = state["hist_all"]
             show_pct = state["show_pct"]
 
             # Estética “fuerte” (líneas más gruesas + fuente pesada)
@@ -495,65 +565,6 @@ def render_ejemplo1():
 
             st.plotly_chart(fig_subset, use_container_width=True)
 
-            # --- Figura 2: histogramas (interactiva) ---
-            fig_hist = go.Figure()
-            fig_hist.add_trace(go.Scatter(
-                x=centers, y=hist1,
-                mode="lines",
-                line=dict(width=2, color="blue"),
-                name="Histograma (1 realización)"
-            ))
-
-            fig_hist.add_trace(go.Scatter(
-                x=centers, y=hist_all,
-                mode="lines",
-                line=dict(width=2, color="darkorange"),  # o "red"
-                name=f"Histograma (todas, Nᵣ={state['params']['Nr']})"
-            ))
-
-            fig_hist.update_layout(
-                title=dict(text="Histograma(s) (densidad)", font=dict(family="Arial Black", size=16, color="black")),
-                height=330,
-                margin=dict(l=55, r=20, t=65, b=55),
-                hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="left", x=0),
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
-                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
-            )
-            fig_hist.update_xaxes(
-                title_text="Valor",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                ticks="outside",
-                tickwidth=2,
-            )
-            fig_hist.update_yaxes(
-                title_text="Densidad",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                ticks="outside",
-                tickwidth=2,
-            )
-
-            st.plotly_chart(fig_hist, use_container_width=True)
-
-            st.markdown(
-                f"**Estimación (1 realización):** m = {state['mu_hat_1']:.3f}, σ̂² = {state['var_hat_1']:.3f}\n\n"
-                f"**Estimación (todas las realizaciones):** m = {state['mu_hat_all']:.3f}, σ̂² = {state['var_hat_all']:.3f}"
-            )
-
     # --- Explicación + Preguntas ---
     if state["ready"]:
         p = state["params"]
@@ -563,38 +574,38 @@ def render_ejemplo1():
         Nr = p["Nr"]
         T = p["T"]
 
-        st.markdown("##### Explicación de la simulación")
-        st.markdown(
-            f"- Se generó ruido gaussiano con **μ = {mu:.2f}** y **σ² = {var:.2f}** "
-            f"durante **T = {T:.1f} s**, con **Nᵣ = {Nr}** realizaciones.\n"
-            "- La gráfica superior muestra una realización: aunque el modelo estadístico sea el mismo, cada realización cambia.\n"
-            "- El subconjunto de realizaciones ilustra la variabilidad entre funciones de muestra; al mostrar más realizaciones se aprecia mejor la tendencia global.\n"
-            "- El histograma usando todas las realizaciones tiende a verse más “estable” porque incorpora muchas más muestras."
-        )
+        with st.expander("Explicación y preguntas", expanded=False):
+            st.markdown("##### Explicación de la simulación")
+            st.markdown(
+                f"- Se generó ruido gaussiano con **μ = {mu:.2f}** y **σ² = {var:.2f}** "
+                f"durante **T = {T:.1f} s**, con **Nᵣ = {Nr}** realizaciones.\n"
+                "- La gráfica superior muestra una realización: aunque el modelo estadístico sea el mismo, cada realización cambia.\n"
+                "- El subconjunto de realizaciones ilustra la variabilidad entre funciones de muestra; al mostrar más realizaciones se aprecia mejor la tendencia global.\n"
+                "- El histograma usando todas las realizaciones tiende a verse más “estable” porque incorpora muchas más muestras."
+            )
 
-        st.markdown(
+            st.markdown(
+                "En este ejemplo el ruido se modela como **blanco, Gaussiano y aditivo** El termino Gaussiano indica que las muestras del ruido siguen una distribución normal, completamente caracterizada por su media y su varianza. El termino blanco hace referencia a que su densidad espectral de potencia es plana y es aditivo ya que el ruido se suma linealmente a la señal de información. "
+                "En ese caso, la media m y la varianza σ² describen completamente la distribución de amplitud en cada instante: "
+                "m fija el centro de la distribución y σ² controla la dispersión. "
+                "De forma más general, para un proceso gaussiano la descripción completa se determina por  "
+                "su función de correlación; y cuando además es blanco , la información esencial de segundo orden "
+                "se resume en la varianza. "
+                "Al aumentar el número de realizaciones, el histograma converge a la distribución teórica por la **ley de los grandes números**: el promedio sobre muchas muestras reduce la variabilidad de la estimación. "
+                "Además, la apariencia de “curva normalizada” se vuelve más clara porque el error de muestreo disminuye aproximadamente como 1/√N, lo que hace que la forma gaussiana se perciba cada vez más suave y estable."
+            )
 
-            "En este ejemplo el ruido se modela como **blanco, Gaussiano y aditivo** El termino Gaussiano indica que las muestras del ruido siguen una distribución normal, completamente caracterizada por su media y su varianza. El termino blanco hace referencia a que su densidad espectral de potencia es plana y es aditivo ya que el ruido se suma linealmente a la señal de información. "
-            "En ese caso, la media m y la varianza σ² describen completamente la distribución de amplitud en cada instante: "
-            "m fija el centro de la distribución y σ² controla la dispersión. "
-            "De forma más general, para un proceso gaussiano la descripción completa se determina por  "
-            "su función de correlación; y cuando además es blanco , la información esencial de segundo orden "
-            "se resume en la varianza. "
-            "Al aumentar el número de realizaciones, el histograma converge a la distribución teórica por la **ley de los grandes números**: el promedio sobre muchas muestras reduce la variabilidad de la estimación. "
-            "Además, la apariencia de “curva normalizada” se vuelve más clara porque el error de muestreo disminuye aproximadamente como 1/√N, lo que hace que la forma gaussiana se perciba cada vez más suave y estable."
-        )
-
-        st.markdown("##### Preguntas y respuestas")
-        st.markdown(
-            "**1. ¿Por qué el histograma usando todas las realizaciones se ve más suave que el de una sola realización?**  \n"
-            "**R:** Porque utiliza muchas más muestras; al aumentar la cantidad de datos, la estimación de la distribución se vuelve menos variable.\n\n"
-            "**2. Si aumentas σ² manteniendo m constante, ¿qué cambia principalmente en el histograma?**  \n"
-            "**R:** El histograma se ensancha (mayor dispersión), ya que aumenta la probabilidad de observar valores alejados del centro.\n\n"
-            "**3. ¿Qué representa m en este modelo de ruido?**  \n"
-            "**R:** El valor promedio alrededor del cual fluctúa el ruido. Si μ≈0, el ruido oscila alrededor de cero.\n\n"
-            "**4. ¿Por qué es importante el hecho de que el ruido AWGN está caracterizado completamente por su media y varianza?**  \n"
-            "**R:** Es crucial porque la media y la varianza definen completamente el comportamiento estadístico del proceso, permitiendo modelar, simular y analizar sistemas de comunicación de manera matemáticamente sencilla y predecible conociendo únicamente dos parametros.  "
-        )
+            st.markdown("##### Preguntas y respuestas")
+            st.markdown(
+                "**1. ¿Por qué el histograma usando todas las realizaciones se ve más suave que el de una sola realización?**  \n"
+                "**R:** Porque utiliza muchas más muestras; al aumentar la cantidad de datos, la estimación de la distribución se vuelve menos variable.\n\n"
+                "**2. Si aumentas σ² manteniendo m constante, ¿qué cambia principalmente en el histograma?**  \n"
+                "**R:** El histograma se ensancha (mayor dispersión), ya que aumenta la probabilidad de observar valores alejados del centro.\n\n"
+                "**3. ¿Qué representa m en este modelo de ruido?**  \n"
+                "**R:** El valor promedio alrededor del cual fluctúa el ruido. Si μ≈0, el ruido oscila alrededor de cero.\n\n"
+                "**4. ¿Por qué es importante el hecho de que el ruido AWGN está caracterizado completamente por su media y varianza?**  \n"
+                "**R:** Es crucial porque la media y la varianza definen completamente el comportamiento estadístico del proceso, permitiendo modelar, simular y analizar sistemas de comunicación de manera matemáticamente sencilla y predecible conociendo únicamente dos parametros.  "
+            )
 
 
 def render_ejemplo2():
@@ -783,6 +794,47 @@ def render_ejemplo2():
         st.success("Simulación generada. Revisa las gráficas y la retroalimentación.")
 
     # -------------------- Gráficas (solo si ready) --------------------
+    with col1:
+        if state["ready"]:
+            t = state["t"]
+            tau = state["tau"]
+            r = state["r"]
+
+            axis_title_font = dict(family="Arial Black", size=14, color="black")
+            tick_font = dict(family="Arial Black", size=12, color="black")
+
+            # 3) Autocorrelación
+            fig3 = go.Figure()
+            fig3.add_trace(go.Scatter(x=tau, y=r, mode="lines", line=dict(width=2), name="R̂(τ)"))
+            fig3.update_layout(
+                title=dict(text="Autocorrelación estimada", font=dict(family="Arial Black", size=16, color="black")),
+                height=320,
+                margin=dict(l=55, r=20, t=65, b=55),
+                hovermode="x unified",
+                showlegend=False,
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                font=dict(family="Arial Black", color="black"),
+                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+            )
+            fig3.update_xaxes(
+                title_text="Retardo τ (s)",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True, gridcolor="lightgray",
+                showline=True, linewidth=2, linecolor="black",
+                ticks="outside", tickwidth=2
+            )
+            fig3.update_yaxes(
+                title_text="R̂(τ)",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True, gridcolor="lightgray",
+                showline=True, linewidth=2, linecolor="black",
+                ticks="outside", tickwidth=2
+            )
+            st.plotly_chart(fig3, use_container_width=True)
+
     with col2:
         if not state["ready"]:
             st.info("Ajusta los parámetros y pulsa **Simular** para generar las gráficas.")
@@ -792,8 +844,6 @@ def render_ejemplo2():
             x = state["x"]
             m_hat = state["m_hat"]
             v_hat = state["v_hat"]
-            tau = state["tau"]
-            r = state["r"]
 
             axis_title_font = dict(family="Arial Black", size=14, color="black")
             tick_font = dict(family="Arial Black", size=12, color="black")
@@ -865,85 +915,54 @@ def render_ejemplo2():
             )
             st.plotly_chart(fig2, use_container_width=True)
 
-            # 3) Autocorrelación
-            fig3 = go.Figure()
-            fig3.add_trace(go.Scatter(x=tau, y=r, mode="lines", line=dict(width=2), name="R̂(τ)"))
-            fig3.update_layout(
-                title=dict(text="Autocorrelación estimada", font=dict(family="Arial Black", size=16, color="black")),
-                height=320,
-                margin=dict(l=55, r=20, t=65, b=55),
-                hovermode="x unified",
-                showlegend=False,
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
-                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
-            )
-            fig3.update_xaxes(
-                title_text="Retardo τ (s)",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
-                showline=True, linewidth=2, linecolor="black",
-                ticks="outside", tickwidth=2
-            )
-            fig3.update_yaxes(
-                title_text="R̂(τ)",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
-                showline=True, linewidth=2, linecolor="black",
-                ticks="outside", tickwidth=2
-            )
-            st.plotly_chart(fig3, use_container_width=True)
-
     # -------------------- Explicación + comparación + Q&A --------------------
     if state["ready"]:
         p = state["params"]
 
-        st.markdown("##### Explicación de la simulación")
-        if p["tipo"] == "Estacionario":
+        with st.expander("Explicación y preguntas", expanded=False):
+            st.markdown("##### Explicación de la simulación")
+            if p["tipo"] == "Estacionario":
+                st.markdown(
+                    f"- Se generó un proceso con m constante = {p['mu0']:.2f}** y **σ² constante = {p['var0']:.2f}**.\n"
+                    f"- En la segunda gráfica se muestra como evolucionan en el tiempo la **media** y la **varianza**.\n"
+                    "- La correlación presenta un pico dominante en **τ=0** y cae rápidamente si el proceso es cercano a blanco."
+                )
+            elif p["tipo"] == "No estacionario (media)":
+                st.markdown(
+                    f"- Se generó un proceso con **media variable**: m(t)=m₀+a·t, con m₀={p['mu0']:.2f} y a={p['drift']:.2f}.\n"
+                    f"- La **varianza** permanece aproximadamente constante en **σ²={p['var0']:.2f}**.\n"
+                    "- En la segunda gráfica se observa claramente la razón de cambio de la media, lo cual es evidencia de no estacionariedad."
+                )
+            else:
+                st.markdown(
+                    f"- Se generó un proceso con **varianza variable**: σ²(t)=σ₀²+b·t, con σ₀²={p['var0']:.2f} y b={p['var_slope']:.2f}.\n"
+                    f"- La **media** se mantiene aproximadamente constante en **m={p['mu0']:.2f}**.\n"
+                    "- En la segunda gráfica se observa que la varianza móvil crece (la señal se vuelve más dispersa)."
+                )
+
+            st.markdown("##### Diferencias clave: estacionario vs no estacionario")
             st.markdown(
-                f"- Se generó un proceso con m constante = {p['mu0']:.2f}** y **σ² constante = {p['var0']:.2f}**.\n"
-                f"- En la segunda gráfica se muestra como evolucionan en el tiempo la **media** y la **varianza**.\n"
-                "- La correlación presenta un pico dominante en **τ=0** y cae rápidamente si el proceso es cercano a blanco."
-            )
-        elif p["tipo"] == "No estacionario (media)":
-            st.markdown(
-                f"- Se generó un proceso con **media variable**: m(t)=m₀+a·t, con m₀={p['mu0']:.2f} y a={p['drift']:.2f}.\n"
-                f"- La **varianza** permanece aproximadamente constante en **σ²={p['var0']:.2f}**.\n"
-                "- En la segunda gráfica se observa claramente la razón de cambio de la media, lo cual es evidencia de no estacionariedad."
-            )
-        else:
-            st.markdown(
-                f"- Se generó un proceso con **varianza variable**: σ²(t)=σ₀²+b·t, con σ₀²={p['var0']:.2f} y b={p['var_slope']:.2f}.\n"
-                f"- La **media** se mantiene aproximadamente constante en **m={p['mu0']:.2f}**.\n"
-                "- En la segunda gráfica se observa que la varianza móvil crece (la señal se vuelve más dispersa)."
+                "- **Estacionario:** sus estadísticos (media y correlación) **no cambian con el tiempo**. "
+                "Esto facilita el modelado, la estimación y el diseño de receptores.\n"
+                "- **No estacionario:** los estadísticos **dependen del tiempo** (m(t), σ²(t), correlación variable). "
+                "En la práctica exige herramientas más complejas: segmentación por intervalos, modelos dependientes del tiempo, "
+                "y estimación adaptativa.\n"
+                "- En telecomunicaciones, el **ruido térmico** se aproxima muy bien como **AWGN estacionario** en bandas y ventanas "
+                "de observación típicas, lo que hace el análisis **mucho más simple** y permite obtener métricas como BER/SNR de forma directa."
             )
 
-        st.markdown("##### Diferencias clave: estacionario vs no estacionario")
-        st.markdown(
-            "- **Estacionario:** sus estadísticos (media y correlación) **no cambian con el tiempo**. "
-            "Esto facilita el modelado, la estimación y el diseño de receptores.\n"
-            "- **No estacionario:** los estadísticos **dependen del tiempo** (m(t), σ²(t), correlación variable). "
-            "En la práctica exige herramientas más complejas: segmentación por intervalos, modelos dependientes del tiempo, "
-            "y estimación adaptativa.\n"
-            "- En telecomunicaciones, el **ruido térmico** se aproxima muy bien como **AWGN estacionario** en bandas y ventanas "
-            "de observación típicas, lo que hace el análisis **mucho más simple** y permite obtener métricas como BER/SNR de forma directa."
-        )
-
-        st.markdown("##### Preguntas y respuestas")
-        st.markdown(
-            "**1. ¿Cómo identificas que un proceso es no estacionario en estas gráficas?**  \n"
-            "**R:** Porque la media y/o la varianza cambian con el tiempo.\n\n"
-            "**2. ¿Por qué un proceso no estacionario es más difícil de tratar que uno estacionario?**  \n"
-            "**R:** Porque sus estadísticas dependen del tiempo; no basta una sola media/varianza global y el modelo debe adaptarse a la evolución temporal.\n\n"
-            "**3. ¿Por qué modelar el ruido como AWGN estacionario simplifica el diseño del receptor?**  \n"
-            "**R:** Porque con estadísticos constantes (y modelo gaussiano), se pueden derivar umbrales/detectores óptimos y predecir desempeño (p.ej., BEP) con mucha menos complejidad.\n\n"
-            "**4. ¿Que representa la función de correlación de un proceso estocástico?**  \n"
-            "**R:** Es una función estadística de segundo orden que mide el grado de dependencia o similitud entre los valores del proceso en dos instantes distintos.. La manera en que las muestras se relacionan entre si siguen un patrón bien definido y este patrón está muy bien representado por la función de correlación RX(Τ), la cual contiene toda la información necesaria para caracterizar la dependencia estadística entre muestras y, en el caso de un proceso estocástico Gaussiano estacionario, determina por completo su estructura estadística. También como se verá en el proximo ejemplo, un análisis util en telecomunicaciones es el análisis de frecuencia, este análisis esta descrito por la función de densidad espectral del proceso, esta función de densidad se obtiene al realizar la transformada de Fourier de la función de correlación \n\n"
-            " Por ejemplo, en el caso de ruido AWGN, el cual es estacionario, se observa que la correlación alcanza su máximo en T=0 y decae conforme aumenta el retardo. Esto tiene todo el sentido ya que se indica que en T=0 una muestra del proceso está perfectamente correlacionada consigo misma "
-        )
+            st.markdown("##### Preguntas y respuestas")
+            st.markdown(
+                "**1. ¿Cómo identificas que un proceso es no estacionario en estas gráficas?**  \n"
+                "**R:** Porque la media y/o la varianza cambian con el tiempo.\n\n"
+                "**2. ¿Por qué un proceso no estacionario es más difícil de tratar que uno estacionario?**  \n"
+                "**R:** Porque sus estadísticas dependen del tiempo; no basta una sola media/varianza global y el modelo debe adaptarse a la evolución temporal.\n\n"
+                "**3. ¿Por qué modelar el ruido como AWGN estacionario simplifica el diseño del receptor?**  \n"
+                "**R:** Porque con estadísticos constantes (y modelo gaussiano), se pueden derivar umbrales/detectores óptimos y predecir desempeño (p.ej., BEP) con mucha menos complejidad.\n\n"
+                "**4. ¿Que representa la función de correlación de un proceso estocástico?**  \n"
+                "**R:** Es una función estadística de segundo orden que mide el grado de dependencia o similitud entre los valores del proceso en dos instantes distintos.. La manera en que las muestras se relacionan entre si siguen un patrón bien definido y este patrón está muy bien representado por la función de correlación RX(Τ), la cual contiene toda la información necesaria para caracterizar la dependencia estadística entre muestras y, en el caso de un proceso estocástico Gaussiano estacionario, determina por completo su estructura estadística. También como se verá en el proximo ejemplo, un análisis util en telecomunicaciones es el análisis de frecuencia, este análisis esta descrito por la función de densidad espectral del proceso, esta función de densidad se obtiene al realizar la transformada de Fourier de la función de correlación \n\n"
+                " Por ejemplo, en el caso de ruido AWGN, el cual es estacionario, se observa que la correlación alcanza su máximo en T=0 y decae conforme aumenta el retardo. Esto tiene todo el sentido ya que se indica que en T=0 una muestra del proceso está perfectamente correlacionada consigo misma "
+            )
 
 
 def render_ejemplo3():
@@ -1099,6 +1118,50 @@ def render_ejemplo3():
         fig.update_xaxes(showgrid=True, gridcolor="lightgray", linecolor="black")
         fig.update_yaxes(showgrid=True, gridcolor="lightgray", linecolor="black")
 
+    with col1:
+        # Colores solicitados
+        c_white = "blue"  # ruido blanco
+        c_colored = "orange"  # ruido coloreado
+
+        # 4) PSD promedio
+        fig4 = go.Figure()
+        fig4.add_trace(go.Scatter(
+            x=data["fwm"], y=(data["Pwm"] + 1e-18),
+            mode="lines",
+            name=f"PSD w(t) promedio (Nᵣ={data['Nr']})",
+            line=dict(color=c_white)
+        ))
+        fig4.add_trace(go.Scatter(
+            x=data["fnm"], y=(data["Pnm"] + 1e-18),
+            mode="lines",
+            name=f"PSD n(t) promedio (Nᵣ={data['Nr']})",
+            line=dict(color=c_colored)
+        ))
+        fig4.update_xaxes(title_text="Frecuencia (Hz)")
+        fig4.update_yaxes(title_text="S(f) (u.a.)", type="log")
+        _plotly_layout(fig4, "PSD promedio")
+        st.plotly_chart(fig4, use_container_width=True)
+
+        # 5) Histograma (Gaussianidad)
+        fig5 = go.Figure()
+        fig5.add_trace(go.Histogram(
+            x=data["W0"], nbinsx=40,
+            name="Hist w(t)",
+            opacity=0.6,
+            marker=dict(color=c_white)
+        ))
+        fig5.add_trace(go.Histogram(
+            x=data["N0"], nbinsx=40,
+            name="Hist n(t)",
+            opacity=0.6,
+            marker=dict(color=c_colored)
+        ))
+        fig5.update_layout(barmode="overlay")
+        fig5.update_xaxes(title_text="Valor")
+        fig5.update_yaxes(title_text="Frecuencia")
+        _plotly_layout(fig5, "Histograma ")
+        st.plotly_chart(fig5, use_container_width=True)
+
     with col2:
         # Colores solicitados
         c_white = "blue"  # ruido blanco
@@ -1161,80 +1224,42 @@ def render_ejemplo3():
         _plotly_layout(fig3, "PSD estimada — 1 realización")
         st.plotly_chart(fig3, use_container_width=True)
 
-        # 4) PSD promedio
-        fig4 = go.Figure()
-        fig4.add_trace(go.Scatter(
-            x=data["fwm"], y=(data["Pwm"] + 1e-18),
-            mode="lines",
-            name=f"PSD w(t) promedio (Nᵣ={data['Nr']})",
-            line=dict(color=c_white)
-        ))
-        fig4.add_trace(go.Scatter(
-            x=data["fnm"], y=(data["Pnm"] + 1e-18),
-            mode="lines",
-            name=f"PSD n(t) promedio (Nᵣ={data['Nr']})",
-            line=dict(color=c_colored)
-        ))
-        fig4.update_xaxes(title_text="Frecuencia (Hz)")
-        fig4.update_yaxes(title_text="S(f) (u.a.)", type="log")
-        _plotly_layout(fig4, "PSD promedio")
-        st.plotly_chart(fig4, use_container_width=True)
-
-        # 5) Histograma (Gaussianidad)
-        fig5 = go.Figure()
-        fig5.add_trace(go.Histogram(
-            x=data["W0"], nbinsx=40,
-            name="Hist w(t)",
-            opacity=0.6,
-            marker=dict(color=c_white)
-        ))
-        fig5.add_trace(go.Histogram(
-            x=data["N0"], nbinsx=40,
-            name="Hist n(t)",
-            opacity=0.6,
-            marker=dict(color=c_colored)
-        ))
-        fig5.update_layout(barmode="overlay")
-        fig5.update_xaxes(title_text="Valor")
-        fig5.update_yaxes(title_text="Frecuencia")
-        _plotly_layout(fig5, "Histograma ")
-        st.plotly_chart(fig5, use_container_width=True)
-
     # --------- Explicación + ideas clave ---------
-    st.markdown("##### Explicación de la simulación")
+    with st.expander("Explicación y preguntas", expanded=False):
+        st.markdown("##### Explicación de la simulación")
 
-    st.latex(r"\textbf{Wiener–Khinchin:}\quad S_x(f)=\mathcal{F}\{R_x(\tau)\}")
-    st.markdown(
-        "La densidad espectral (PSD) de potencia de un proceso estocástico estacionario describe la forma en que la potencia promedio del proceso se distribuye en función de la frecuencia \n\n "
-        "Es posible calcular esta densidad espectral de potencia a través de la transformada de Fourier de la función de correlación del proceso, esta afirmación se conoce como el teorema de Wiener-Khinchin\n\n"
-        "El ruido blanco Gaussiano aditivo (AWGN) es un modelo ideal ampliamente utilizado para analizar el desempeño de sistemas de telecomunicaciones. Este ruido se caracteriza por ser un proceso estocástico Gaussiano de media cero, estacionario y con una densidad espectral de potencia constante a lo largo de las frecuencias de interés. \n\n"
-        "El ruido blanco Gaussiano aditivo tiene una densidad espectral de potencia constante como se define en la ecuación \n\n"
-        "Sn(f)=(N0/2)|H(f)|^{2}\n\n Donde N0 representa la densidad espectral de potencia total del ruido  y H es el filtro del receptor \n\n"
-        "Ruido coloreado: Al filtrar el ruido blanco con un sistema LTI no diseñado para ruido blanco, se introduce correlación temporal (R̂n(τ) se “ensancha”) y la PSD deja de ser plana.\n\n"
-        "De este ejemplo se puede concluir que:\n\n"
-        "-  La función de correlación caracteriza completamente cualquier conjunto de funciones de densidad de las muestras del proceso X(t).\n\n"
-        "- El ruido térmico se puede modelar como un proceso estocástico estacionario Gaussiano para el análisis de desempeño en sistemas de telecomunicaciones "
+        st.latex(r"\textbf{Wiener–Khinchin:}\quad S_x(f)=\mathcal{F}\{R_x(\tau)\}")
+        st.markdown(
+            "La densidad espectral (PSD) de potencia de un proceso estocástico estacionario describe la forma en que la potencia promedio del proceso se distribuye en función de la frecuencia \n\n "
+            "Es posible calcular esta densidad espectral de potencia a través de la transformada de Fourier de la función de correlación del proceso, esta afirmación se conoce como el teorema de Wiener-Khinchin\n\n"
+            "El ruido blanco Gaussiano aditivo (AWGN) es un modelo ideal ampliamente utilizado para analizar el desempeño de sistemas de telecomunicaciones. Este ruido se caracteriza por ser un proceso estocástico Gaussiano de media cero, estacionario y con una densidad espectral de potencia constante a lo largo de las frecuencias de interés. \n\n"
+            "El ruido blanco Gaussiano aditivo tiene una densidad espectral de potencia constante como se define en la ecuación \n\n"
+            "Sn(f)=(N0/2)|H(f)|^{2}\n\n Donde N0 representa la densidad espectral de potencia total del ruido  y H es el filtro del receptor \n\n"
+            "Ruido coloreado: Al filtrar el ruido blanco con un sistema LTI no diseñado para ruido blanco, se introduce correlación temporal (R̂n(τ) se “ensancha”) y la PSD deja de ser plana.\n\n"
+            "De este ejemplo se puede concluir que:\n\n"
+            "-  La función de correlación caracteriza completamente cualquier conjunto de funciones de densidad de las muestras del proceso X(t).\n\n"
+            "- El ruido térmico se puede modelar como un proceso estocástico estacionario Gaussiano para el análisis de desempeño en sistemas de telecomunicaciones "
 
 
-    )
+        )
 
-    st.markdown("##### Diferencia clave (blanco vs coloreado)")
-    st.markdown(
-        "- **Blanco:** muestras casi no correlacionadas : R(τ) cae rápido y Sn(f) es casi plana.\n"
-        "- **Coloreado:** el filtro concentra energía en ciertas bandas : Sn(f) tiene forma y R(τ) se extiende en el tiempo.\n"
-        "- **Gaussiano y sistema LTI:** si la entrada es gaussiana, la salida sigue siendo gaussiana por linealidad."
-    )
+        st.markdown("##### Diferencia clave (blanco vs coloreado)")
+        st.markdown(
+            "- **Blanco:** muestras casi no correlacionadas : R(τ) cae rápido y Sn(f) es casi plana.\n"
+            "- **Coloreado:** el filtro concentra energía en ciertas bandas : Sn(f) tiene forma y R(τ) se extiende en el tiempo.\n"
+            "- **Gaussiano y sistema LTI:** si la entrada es gaussiana, la salida sigue siendo gaussiana por linealidad."
+        )
 
-    # --------- Preguntas y respuestas ---------
-    st.markdown("##### Preguntas y respuestas")
-    st.markdown("**1) ¿Por qué el ruido blanco se asocia a una PSD “plana”?**")
-    st.markdown("**R:** Porque su potencia se distribuye de forma aproximadamente uniforme en frecuencia , por eso el espectro tiende a verse “horizontal”.")
+        # --------- Preguntas y respuestas ---------
+        st.markdown("##### Preguntas y respuestas")
+        st.markdown("**1) ¿Por qué el ruido blanco se asocia a una PSD “plana”?**")
+        st.markdown("**R:** Porque su potencia se distribuye de forma aproximadamente uniforme en frecuencia , por eso el espectro tiende a verse “horizontal”.")
 
-    st.markdown("**2) ¿Qué indica que el ruido de salida es “coloreado”?**")
-    st.markdown("**R:** Que la PSD ya no es plana: el filtro favorece ciertas frecuencias y atenúa otras. Además, la función de correlación se hace más ancha.")
+        st.markdown("**2) ¿Qué indica que el ruido de salida es “coloreado”?**")
+        st.markdown("**R:** Que la PSD ya no es plana: el filtro favorece ciertas frecuencias y atenúa otras. Además, la función de correlación se hace más ancha.")
 
-    st.markdown("**3) ¿Qué teorema conecta la función correlación y PSD?**")
-    st.markdown("**R:** El teorema de Wiener–Khinchin: la PSD es la Transformada de Fourier de la autocorrelación, \(S_x(f)=\\mathcal{F}\\{R_x(\\tau)\\}\\).")
+        st.markdown("**3) ¿Qué teorema conecta la función correlación y PSD?**")
+        st.markdown("**R:** El teorema de Wiener–Khinchin: la PSD es la Transformada de Fourier de la autocorrelación, \(S_x(f)=\\mathcal{F}\\{R_x(\\tau)\\}\\).")
 
 # -----------------------------
 # Dinámicas (casos aleatorios + un solo botón de envío)
