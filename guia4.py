@@ -284,12 +284,14 @@ def render_ejemplo1():
             "Este ejemplo genera realizaciones de un proceso gaussiano (ruido AWGN) y permite comparar:\n\n" 
             "sea x(t) un proceso gaussiano estacionario:\n"
             "- Una realización (muestra en el tiempo).\n"
+            "- Un subconjunto de realizaciones para visualizar variabilidad.\n"
             "- Histograma de una realización vs histograma usando todas las realizaciones**.\n"
             "- Estimaciones de **media** y **varianza**.\n\n"
             "**Pasos sugeridos**\n"
             "1. Ajusta **m**, **σ²** y la **duración**.\n"
             "2. Elige el número de realizaciones **Nᵣ**.\n"
-            "3. Pulsa **Simular** para generar el conjunto."
+            "3. Selecciona el porcentaje de realizaciones a mostrar.\n"
+            "4. Pulsa **Simular** para generar el conjunto."
         )
 
     # Estado para persistir resultados
@@ -299,6 +301,7 @@ def render_ejemplo1():
             "params": {},
             "t": None,
             "x0": None,
+            "X": None,
             "centers": None,
             "hist1": None,
             "hist_all": None,
@@ -306,6 +309,7 @@ def render_ejemplo1():
             "var_hat_1": None,
             "mu_hat_all": None,
             "var_hat_all": None,
+            "show_pct": None,
         }
     state = st.session_state.g4_e1_state
 
@@ -325,6 +329,14 @@ def render_ejemplo1():
 
         T = st.slider("Duración T (s)", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="g4_e1_T")
         Nr = st.slider("Número de realizaciones Nᵣ", min_value=1, max_value=200, value=20, step=1, key="g4_e1_Nr")
+        show_pct = st.slider(
+            "Porcentaje de realizaciones a mostrar (%)",
+            min_value=5,
+            max_value=100,
+            value=25,
+            step=5,
+            key="g4_e1_show_pct"
+        )
 
         fs = 2000.0  # fijo internamente
         N = int(fs * T)
@@ -359,6 +371,7 @@ def render_ejemplo1():
             "params": {"mu": mu, "var": var, "sigma": sigma, "T": T, "Nr": Nr, "fs": fs, "seed": seed},
             "t": t,
             "x0": x0,
+            "X": X,
             "centers": centers,
             "hist1": hist1,
             "hist_all": hist_all,
@@ -366,6 +379,7 @@ def render_ejemplo1():
             "var_hat_1": var_hat_1,
             "mu_hat_all": mu_hat_all,
             "var_hat_all": var_hat_all,
+            "show_pct": show_pct,
         })
 
         st.success("Simulación generada. Revisa las gráficas y la interpretación.")
@@ -376,9 +390,11 @@ def render_ejemplo1():
         else:
             t = state["t"]
             x0 = state["x0"]
+            X = state["X"]
             centers = state["centers"]
             hist1 = state["hist1"]
             hist_all = state["hist_all"]
+            show_pct = state["show_pct"]
 
             # Estética “fuerte” (líneas más gruesas + fuente pesada)
             axis_title_font = dict(family="Arial Black", size=14, color="black")
@@ -425,6 +441,59 @@ def render_ejemplo1():
             )
 
             st.plotly_chart(fig_time, use_container_width=True)
+
+            # --- Figura 1.5: subconjunto de realizaciones ---
+            fig_subset = go.Figure()
+            if X is not None:
+                subset_count = max(1, int(np.ceil(X.shape[0] * show_pct / 100)))
+                for idx in range(subset_count):
+                    fig_subset.add_trace(go.Scatter(
+                        x=t,
+                        y=X[idx],
+                        mode="lines",
+                        line=dict(width=1),
+                        showlegend=False,
+                        hoverinfo="skip"
+                    ))
+
+            fig_subset.update_layout(
+                title=dict(
+                    text=f"Subconjunto de realizaciones ({show_pct}% de Nᵣ)",
+                    font=dict(family="Arial Black", size=16, color="black")
+                ),
+                height=330,
+                margin=dict(l=55, r=20, t=65, b=55),
+                hovermode=False,
+                paper_bgcolor="white",
+                plot_bgcolor="white",
+                font=dict(family="Arial Black", color="black"),
+            )
+            fig_subset.update_xaxes(
+                title_text="Tiempo (s)",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True,
+                gridcolor="lightgray",
+                showline=True,
+                linewidth=2,
+                linecolor="black",
+                ticks="outside",
+                tickwidth=2,
+            )
+            fig_subset.update_yaxes(
+                title_text="Amplitud",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showgrid=True,
+                gridcolor="lightgray",
+                showline=True,
+                linewidth=2,
+                linecolor="black",
+                ticks="outside",
+                tickwidth=2,
+            )
+
+            st.plotly_chart(fig_subset, use_container_width=True)
 
             # --- Figura 2: histogramas (interactiva) ---
             fig_hist = go.Figure()
@@ -499,6 +568,7 @@ def render_ejemplo1():
             f"- Se generó ruido gaussiano con **μ = {mu:.2f}** y **σ² = {var:.2f}** "
             f"durante **T = {T:.1f} s**, con **Nᵣ = {Nr}** realizaciones.\n"
             "- La gráfica superior muestra una realización: aunque el modelo estadístico sea el mismo, cada realización cambia.\n"
+            "- El subconjunto de realizaciones ilustra la variabilidad entre funciones de muestra; al mostrar más realizaciones se aprecia mejor la tendencia global.\n"
             "- El histograma usando todas las realizaciones tiende a verse más “estable” porque incorpora muchas más muestras."
         )
 
@@ -509,7 +579,9 @@ def render_ejemplo1():
             "m fija el centro de la distribución y σ² controla la dispersión. "
             "De forma más general, para un proceso gaussiano la descripción completa se determina por  "
             "su función de correlación; y cuando además es blanco , la información esencial de segundo orden "
-            "se resume en la varianza."
+            "se resume en la varianza. "
+            "Al aumentar el número de realizaciones, el histograma converge a la distribución teórica por la **ley de los grandes números**: el promedio sobre muchas muestras reduce la variabilidad de la estimación. "
+            "Además, la apariencia de “curva normalizada” se vuelve más clara porque el error de muestreo disminuye aproximadamente como 1/√N, lo que hace que la forma gaussiana se perciba cada vez más suave y estable."
         )
 
         st.markdown("##### Preguntas y respuestas")
