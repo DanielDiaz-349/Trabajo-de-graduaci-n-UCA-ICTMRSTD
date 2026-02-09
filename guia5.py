@@ -311,7 +311,7 @@ def render_ejemplo1():
         )
         Nb = st.slider(
             "Número de bits a visualizar",
-            min_value=8, max_value=100000,
+            min_value=8, max_value=1000,
             value=20, step=1, key="g5_e1_nb"
         )
 
