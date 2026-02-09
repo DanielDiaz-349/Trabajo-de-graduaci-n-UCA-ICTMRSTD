@@ -296,34 +296,31 @@ def render_ejemplo1():
             "3. Observa cómo al bajar $E_b/N_0$ aparecen errores (bits mal detectados)."
         )
 
-    col1, col2 = st.columns(2)
+    EbN0_dB = st.slider(
+        "Relación $E_b/N_0$ (dB)",
+        min_value=-2.0, max_value=14.0,
+        value=2.0, step=1.0, key="g5_e1_ebn0"
+    )
+    Tb_ms = st.slider(
+        "Duración de bit $T_b$ (ms)",
+        min_value=0.5, max_value=5.0,
+        value=2.0, step=0.5, key="g5_e1_tb_ms"
+    )
+    Nb = st.slider(
+        "Número de bits a visualizar",
+        min_value=8, max_value=1000,
+        value=20, step=1, key="g5_e1_nb"
+    )
 
-    with col1:
-        EbN0_dB = st.slider(
-            "Relación $E_b/N_0$ (dB)",
-            min_value=-2.0, max_value=14.0,
-            value=2.0, step=1.0, key="g5_e1_ebn0"
-        )
-        Tb_ms = st.slider(
-            "Duración de bit $T_b$ (ms)",
-            min_value=0.5, max_value=5.0,
-            value=2.0, step=0.5, key="g5_e1_tb_ms"
-        )
-        Nb = st.slider(
-            "Número de bits a visualizar",
-            min_value=8, max_value=1000,
-            value=20, step=1, key="g5_e1_nb"
-        )
+    fc = st.slider(
+        "Frecuencia de portadora $f_c$ (Hz)",
+        min_value=300, max_value=6000,
+        value=1000, step=100, key="g5_e1_fc"
+    )
 
-        fc = st.slider(
-            "Frecuencia de portadora $f_c$ (Hz)",
-            min_value=300, max_value=6000,
-            value=1000, step=100, key="g5_e1_fc"
-        )
-
-        if st.button("Simular", key="g5_e1_btn"):
-            st.session_state.g5_e1_seed = int(np.random.randint(0, 2**31 - 1))
-            st.session_state.g5_e1_run = True
+    if st.button("Simular", key="g5_e1_btn"):
+        st.session_state.g5_e1_seed = int(np.random.randint(0, 2**31 - 1))
+        st.session_state.g5_e1_run = True
 
     if not st.session_state.get("g5_e1_run"):
         st.info("Pulsa **Simular** para generar las gráficas del ejemplo 1.")
@@ -479,28 +476,27 @@ def render_ejemplo1():
             diagram_path = p
             break
 
-    with col2:
-        media_col, plot_col = st.columns([1, 2])
+    media_col, plot_col = st.columns([1, 2])
 
-        with media_col:
-            if diagram_path is not None:
-                st.image(
-                    diagram_path,
-                    caption="Modelo general de un sistema digital en presencia de AWGN",
-                    use_container_width=True
-                )
-            else:
-                st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
-
-        with plot_col:
-            st.plotly_chart(fig, use_container_width=True, theme=None)
-
-            st.markdown(
-                f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
-                f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
+    with media_col:
+        if diagram_path is not None:
+            st.image(
+                diagram_path,
+                caption="Modelo general de un sistema digital en presencia de AWGN",
+                use_container_width=True
             )
+        else:
+            st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
 
-    with st.expander("Explicación de la simulación", expanded=True):
+    with plot_col:
+        st.plotly_chart(fig, use_container_width=True, theme=None)
+
+        st.markdown(
+            f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
+            f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
+        )
+
+    with st.expander("Explicación, preguntas y respuestas", expanded=True):
         st.markdown(
             "- **$E_b$ (energía por bit):** es la energía promedio invertida para transmitir **un bit**. "
             "Se obtiene integrando la energía de la señal en el intervalo de bit: "
@@ -523,7 +519,6 @@ def render_ejemplo1():
             "- Por eso, **$E_b/N_0$ sí afecta la decisión**: con menos $E_b/N_0$ aumenta el traslape y aparecen errores."
         )
 
-    with st.expander("Preguntas y respuestas", expanded=True):
         st.markdown("**1. ¿Por qué la señal de la gráfica (2) es analógica aunque transmita bits?**")
         st.markdown("**R:** Porque la información binaria se representa mediante un **parámetro continuo** de una onda (fase/amplitud) en el tiempo continuo.")
         st.markdown("**2. ¿Qué efecto tiene disminuir $E_b/N_0$?**")
@@ -561,14 +556,8 @@ def render_ejemplo2():
         min_value=2.0, max_value=8.0, value=6.0, step=1.0,
         key="g5_e2_max"
     )
-    step_db = st.select_slider("Paso (dB)", options=[0.5, 1.0, 2.0], value=1.0, key="g5_e2_step")
-
-    punto_hist = st.slider(
-        "Punto para histogramas (dB)",
-        min_value=float(ebn0_min), max_value=float(ebn0_max),
-        value=min(6.0, float(ebn0_max)), step=float(step_db),
-        key="g5_e2_hist_pt"
-    )
+    step_db = 1.0
+    punto_hist = float(np.clip(6.0, float(ebn0_min), float(ebn0_max)))
     ver_hist = st.checkbox("Mostrar histogramas de decisión", value=True, key="g5_e2_show_hist")
 
     if st.button("Simular", key="g5_e2_btn"):
@@ -649,7 +638,7 @@ def render_ejemplo2():
         name="BER simulada", line=dict(color="#ff7f0e", width=2.5),
         marker=dict(size=7)
     ))
-    fig.update_yaxes(type="log", title_text="BER (log)")
+    fig.update_yaxes(type="log", title_text="BER (log)", range=[-6, 0])
     fig.update_xaxes(title_text="Eb/N0 (dB)")
 
     try:
@@ -657,7 +646,7 @@ def render_ejemplo2():
     except Exception:
         fig.update_layout(title="BPSK en AWGN: BER vs Eb/N0")
 
-    _force_plotly_readable_local(fig, height=420)
+    _force_plotly_readable(fig, height=420)
     st.plotly_chart(fig, use_container_width=True)
 
     if n_zeros > 0:
@@ -695,7 +684,7 @@ def render_ejemplo2():
         _force_plotly_readable_local(figH, height=380)
         st.plotly_chart(figH, use_container_width=True)
 
-    with st.expander("Explicación de la simulación", expanded=True):
+    with st.expander("Explicación, preguntas y respuestas", expanded=True):
         st.markdown(
             "Como se definió en la guía 1, la **BER** mide la tasa de errores por bits enviados. "
             "Pero, ¿de dónde sale la probabilidad de que el error suceda? A esta función se le conoce "
@@ -716,7 +705,6 @@ def render_ejemplo2():
             "privilegia robustez sobre eficiencia espectral."
         )
 
-    with st.expander("Preguntas y respuestas", expanded=True):
         st.markdown("**1. ¿Por qué graficamos BER en escala logarítmica?**")
         st.markdown("**R:** Porque la BER cae por órdenes de magnitud al aumentar $E_b/N_0$; la escala log permite ver esa caída claramente.")
         st.markdown("**2. ¿Qué representa $E_b/N_0$?**")
@@ -752,14 +740,8 @@ def render_ejemplo3():
                          value=0.0, step=1.0, key="g5_e3_min")
     ebn0_max = st.slider("$E_b/N_0$ máximo (dB)", min_value=2.0, max_value=12.0,
                          value=12.0, step=1.0, key="g5_e3_max")
-    step_db = st.select_slider("Paso (dB)", options=[0.5, 1.0, 2.0], value=1.0, key="g5_e3_step")
-
-    punto_hist = st.slider(
-        "Punto para histogramas (dB)",
-        min_value=float(ebn0_min), max_value=float(ebn0_max),
-        value=min(6.0, float(ebn0_max)), step=float(step_db),
-        key="g5_e3_hist_pt"
-    )
+    step_db = 1.0
+    punto_hist = float(np.clip(6.0, float(ebn0_min), float(ebn0_max)))
     ver_hist = st.checkbox("Mostrar histogramas de decisión", value=True, key="g5_e3_show_hist")
 
     if st.button("Simular", key="g5_e3_btn"):
@@ -859,7 +841,7 @@ def render_ejemplo3():
         _force_plotly_readable(figH, height=380)
         st.plotly_chart(figH, use_container_width=True)
 
-    with st.expander("Explicación de la simulación", expanded=True):
+    with st.expander("Explicación, preguntas y respuestas", expanded=True):
         st.markdown("Para **BFSK** la **BEP** está dada por la ecuación:")
         st.latex(
             r"P(E)=\frac{1}{2}\,\mathrm{erfc}\!\left(\sqrt{\frac{E_b}{2N_0}\left[1-\frac{\sin\left(4\pi f_d T_b\right)}{4\pi f_d T_b}\right]}\right)"
@@ -872,7 +854,6 @@ def render_ejemplo3():
             "  En cambio, BFSK típicamente requiere **más ancho de banda** y, si no es ortogonal ($\\rho\\neq 0$), puede degradarse más.\n"
         )
 
-    with st.expander("Preguntas y respuestas", expanded=True):
         st.markdown("**1. ¿Por qué BPSK suele superar a BFSK en BER para el mismo $E_b/N_0$?**")
         st.markdown("**R:** Porque BPSK usa señales antipodales (máxima separación en espacio de señales), lo que reduce la probabilidad de confusión bajo ruido gaussiano; BFSK depende de qué tan ortogonales sean sus señales (ρ).")
 
