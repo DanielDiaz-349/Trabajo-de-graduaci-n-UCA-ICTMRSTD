@@ -133,21 +133,9 @@ x_1(t) = √(E_b/T_p) e^{jθ}, 0≤t≤T_p; 0 otro  (Ec. 6.97)
 P(E) = (1/2) erfc( √( (E_b/(2N_0)) (1 - cosθ) ) )  
 Para θ = π:  P(E) = (1/2) erfc( √(E_b/(2N_0)) )    """
 
-MATERIALES_MD = r"""Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
-
-Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
-
-Python instalado (versión 3.8 o superior recomendada).
-
-Un entorno de desarrollo como Visual Studio Code o PyCharm. Las siguientes bibliotecas de Python:
-
-numpy para el manejo de arreglos y operaciones numéricas.
-
-matplotlib para la generación de gráficas.
-
-streamlit para la interfaz interactiva de la guía.
-
-scipy para operaciones adicionales de filtrado, convolución y análisis en frecuencia."""
+MATERIALES_MD = r"""
+-Dispositivo con acceso a internet
+"""
 
 CONCLUSIONES_MD = r"""- En un sistema de transmisión digital en presencia de AWGN, el desempeño queda fuertemente gobernado por la relación : al aumentar la probabilidad de error disminuye, porque el ruido tiene menor capacidad de desplazar la variable de decisión hacia la región equivocada.
 - El detector óptimo (MAP/ML bajo hipótesis equiprobables) se interpreta como una regla de decisión basada en un umbral/estadístico que separa las hipótesis. Esta visión permite conectar directamente la teoría (distribuciones condicionadas y probabilidad de error) con la simulación (BER estimada), haciendo evidente por qué la detección óptima mejora el desempeño.
