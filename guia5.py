@@ -589,9 +589,9 @@ def render_ejemplo2():
             "Se calcula la **BER** de BPSK en AWGN de dos maneras:\n\n"
             "- **Teórica y simulada**\n\n"
             "Pasos sugeridos\n\n"
-            "- 1. Ajustar el **número de bits** a simular\n\n"
-            "- 2. Ajustar la relación **Eb​/N0**, tanto en minimo como maximo\n\n"
-            "- 3. **Simular** y verificar la retroalimentación"
+            "1. Ajustar el **número de bits** a simular\n\n"
+            "2. Ajustar la relación **Eb​/N0**, tanto en minimo como maximo\n\n"
+            "3. **Simular** y verificar la retroalimentación"
             
         )
 
@@ -761,7 +761,13 @@ def render_ejemplo3():
             "En **BFSK** (Binary Frequency Shift Keying) cada bit se representa con **una de dos frecuencias**.\n\n"
             "En el receptor , se correlaciona (o filtra igualado) con ambas señales y se decide por la mayor.\n\n"
             "En este ejemplo:\n"
-            "- Se calcula BER **teórica** y **simulada**\n"
+            "- Se calcula BER **teórica** y **simulada**\n\n"
+            "Pasos sugeridos\n\n"
+            "1. Ajustar el **número de bits** a simular\n\n"
+            "2. Ajustar la duración del bit **Tb**\n\n"
+            "3. Ajustar la desviación de frecuencia **fd**\n\n"
+            "4. Ajustar la relación **Eb​/N0**​, tanto en minimos como maximos\n\n"
+            "5. **Simular** y verificar la retroalimentación"
         )
 
     Nbits = st.slider("Número de bits", min_value=2000, max_value=200000,
