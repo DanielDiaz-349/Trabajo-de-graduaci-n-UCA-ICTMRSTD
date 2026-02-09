@@ -585,9 +585,14 @@ def render_ejemplo2():
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
+            "BPSK (Binary Phase Shift Keying)6,  modulación digital que representa datos binarios (0s y 1s) cambiando la fase de una señal portadora en 180 grados\n\n"
             "Se calcula la **BER** de BPSK en AWGN de dos maneras:\n\n"
-            "- **Teórica** (función Q)\n"
-            "- **Simulada** \n"
+            "- **Teórica y simulada**\n\n"
+            "Pasos sugeridos\n\n"
+            "- 1. Ajustar el **número de bits** a simular\n\n"
+            "- 2. Ajustar la relación **Eb​/N0**, tanto en minimo como maximo\n\n"
+            "- 3. **Simular** y verificar la retroalimentación"
+            
         )
 
     Nbits = st.slider(
