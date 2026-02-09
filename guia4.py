@@ -141,6 +141,74 @@ CONCLUSIONES_TEXT = """1. El ruido en telecomunicaciones se modela de forma natu
 # Utilidades numéricas
 # -----------------------------
 
+def _get_plot_theme():
+    ui_theme = st.session_state.get("ui_theme")
+    if ui_theme:
+        theme_name = ui_theme.lower()
+    else:
+        base_theme = (st.get_option("theme.base") or "light").lower()
+        theme_name = "obscuro" if base_theme == "dark" else "blanco"
+
+    if theme_name == "obscuro":
+        return {
+            "paper_bgcolor": "#0f1113",
+            "plot_bgcolor": "#2b2f36",
+            "font_color": "#ffffff",
+            "grid_color": "#444444",
+            "axis_color": "#ffffff",
+            "hover_bg": "#2b2f36",
+            "hover_font": "#ffffff",
+        }
+    if theme_name == "rosa":
+        return {
+            "paper_bgcolor": "#fff6fb",
+            "plot_bgcolor": "#ffffff",
+            "font_color": "#330033",
+            "grid_color": "#f0c6dc",
+            "axis_color": "#330033",
+            "hover_bg": "#ffd6eb",
+            "hover_font": "#330033",
+        }
+    return {
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "font_color": "#000000",
+        "grid_color": "#d9d9d9",
+        "axis_color": "#000000",
+        "hover_bg": "#ffffff",
+        "hover_font": "#000000",
+    }
+
+
+def _apply_plot_theme(fig, theme, font_size=12):
+    fig.update_layout(
+        paper_bgcolor=theme["paper_bgcolor"],
+        plot_bgcolor=theme["plot_bgcolor"],
+        font=dict(color=theme["font_color"], size=font_size),
+        hoverlabel=dict(bgcolor=theme["hover_bg"], font=dict(color=theme["hover_font"])),
+    )
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor=theme["grid_color"],
+        zerolinecolor=theme["axis_color"],
+        linecolor=theme["axis_color"],
+        ticks="outside",
+        tickcolor=theme["axis_color"],
+        tickfont=dict(color=theme["font_color"]),
+        title_font=dict(color=theme["font_color"]),
+    )
+
+
 def _rng_from_seed(seed: int) -> np.random.Generator:
     return np.random.default_rng(int(seed) & 0xFFFFFFFF)
 
@@ -260,24 +328,7 @@ def render_ejemplo1():
     import streamlit as st
 
     st.subheader("Ejemplo 1 — Realizaciones, histograma y estimación de parámetros ruido AWGN")
-
-    # --- Fuerza visibilidad en Plotly aunque Streamlit esté en dark ---
-    # (A veces el CSS del tema afecta SVG y baja opacidad; esto lo “clava” en negro/opaco.)
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stPlotlyChart"] svg text{
-            fill: #000000 !important;
-            opacity: 1 !important;
-        }
-        div[data-testid="stPlotlyChart"] svg line,
-        div[data-testid="stPlotlyChart"] svg path{
-            stroke-opacity: 1 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    plot_theme = _get_plot_theme()
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
@@ -396,52 +447,83 @@ def render_ejemplo1():
         hist_all = state["hist_all"]
         show_pct = state["show_pct"]
 
-        axis_title_font = dict(family="Arial Black", size=14, color="black")
-        tick_font = dict(family="Arial Black", size=12, color="black")
+        axis_title_font = dict(family="Arial Black", size=14, color=plot_theme["font_color"])
+        tick_font = dict(family="Arial Black", size=12, color=plot_theme["font_color"])
 
-        # --- Figura 1: realización (fila superior) ---
-        fig_time = go.Figure()
-        fig_time.add_trace(go.Scatter(x=t, y=x0, mode="lines", line=dict(width=2), name="x(t)"))
-        fig_time.update_layout(
-            title=dict(text="Una realización x(t)", font=dict(family="Arial Black", size=16, color="black")),
+        fig_hist = go.Figure()
+        fig_hist.add_trace(go.Scatter(
+            x=centers, y=hist1,
+            mode="lines",
+            line=dict(width=2, color="blue"),
+            name="Histograma (1 realización)"
+        ))
+
+        fig_hist.add_trace(go.Scatter(
+            x=centers, y=hist_all,
+            mode="lines",
+            line=dict(width=2, color="darkorange"),
+            name=f"Histograma (todas, Nᵣ={state['params']['Nr']})"
+        ))
+
+        fig_hist.update_layout(
+            title=dict(
+                text="Histograma(s) (densidad)",
+                font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])
+            ),
             height=330,
             margin=dict(l=55, r=20, t=65, b=55),
             hovermode="x unified",
-            showlegend=False,
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            font=dict(family="Arial Black", color="black"),
-            hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.05,
+                xanchor="left",
+                x=0,
+                font=dict(color=plot_theme["font_color"])
+            ),
         )
-        fig_time.update_xaxes(
-            title_text="Tiempo (s)",
-            title_font=axis_title_font,
-            tickfont=tick_font,
-            showgrid=True,
-            gridcolor="lightgray",
-            showline=True,
-            linewidth=2,
-            linecolor="black",
-            ticks="outside",
-            tickwidth=2,
-        )
-        fig_time.update_yaxes(
-            title_text="Amplitud",
-            title_font=axis_title_font,
-            tickfont=tick_font,
-            showgrid=True,
-            gridcolor="lightgray",
-            showline=True,
-            linewidth=2,
-            linecolor="black",
-            ticks="outside",
-            tickwidth=2,
-        )
-        st.plotly_chart(fig_time, use_container_width=True)
+        fig_hist.update_xaxes(title_text="Valor", title_font=axis_title_font, tickfont=tick_font)
+        fig_hist.update_yaxes(title_text="Densidad", title_font=axis_title_font, tickfont=tick_font)
+        _apply_plot_theme(fig_hist, plot_theme)
+        st.plotly_chart(fig_hist, use_container_width=True, theme=None)
 
         row2_col1, row2_col2 = st.columns(2)
 
         with row2_col1:
+            fig_time = go.Figure()
+            fig_time.add_trace(go.Scatter(x=t, y=x0, mode="lines", line=dict(width=2), name="x(t)"))
+            fig_time.update_layout(
+                title=dict(
+                    text="Una realización x(t)",
+                    font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])
+                ),
+                height=330,
+                margin=dict(l=55, r=20, t=65, b=55),
+                hovermode="x unified",
+                showlegend=False,
+            )
+            fig_time.update_xaxes(
+                title_text="Tiempo (s)",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showline=True,
+                linewidth=2,
+                ticks="outside",
+                tickwidth=2,
+            )
+            fig_time.update_yaxes(
+                title_text="Amplitud",
+                title_font=axis_title_font,
+                tickfont=tick_font,
+                showline=True,
+                linewidth=2,
+                ticks="outside",
+                tickwidth=2,
+            )
+            _apply_plot_theme(fig_time, plot_theme)
+            st.plotly_chart(fig_time, use_container_width=True, theme=None)
+
+        with row2_col2:
             fig_subset = go.Figure()
             if X is not None:
                 subset_count = max(1, int(np.ceil(X.shape[0] * show_pct / 100)))
@@ -458,24 +540,18 @@ def render_ejemplo1():
             fig_subset.update_layout(
                 title=dict(
                     text=f"Subconjunto de realizaciones ({show_pct}% de Nᵣ)",
-                    font=dict(family="Arial Black", size=16, color="black")
+                    font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])
                 ),
                 height=330,
                 margin=dict(l=55, r=20, t=65, b=55),
                 hovermode=False,
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
             )
             fig_subset.update_xaxes(
                 title_text="Tiempo (s)",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
                 showline=True,
                 linewidth=2,
-                linecolor="black",
                 ticks="outside",
                 tickwidth=2,
             )
@@ -483,70 +559,13 @@ def render_ejemplo1():
                 title_text="Amplitud",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
                 showline=True,
                 linewidth=2,
-                linecolor="black",
                 ticks="outside",
                 tickwidth=2,
             )
-
-            st.plotly_chart(fig_subset, use_container_width=True)
-
-        with row2_col2:
-            fig_hist = go.Figure()
-            fig_hist.add_trace(go.Scatter(
-                x=centers, y=hist1,
-                mode="lines",
-                line=dict(width=2, color="blue"),
-                name="Histograma (1 realización)"
-            ))
-
-            fig_hist.add_trace(go.Scatter(
-                x=centers, y=hist_all,
-                mode="lines",
-                line=dict(width=2, color="darkorange"),
-                name=f"Histograma (todas, Nᵣ={state['params']['Nr']})"
-            ))
-
-            fig_hist.update_layout(
-                title=dict(text="Histograma(s) (densidad)", font=dict(family="Arial Black", size=16, color="black")),
-                height=330,
-                margin=dict(l=55, r=20, t=65, b=55),
-                hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="left", x=0),
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
-                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
-            )
-            fig_hist.update_xaxes(
-                title_text="Valor",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                ticks="outside",
-                tickwidth=2,
-            )
-            fig_hist.update_yaxes(
-                title_text="Densidad",
-                title_font=axis_title_font,
-                tickfont=tick_font,
-                showgrid=True,
-                gridcolor="lightgray",
-                showline=True,
-                linewidth=2,
-                linecolor="black",
-                ticks="outside",
-                tickwidth=2,
-            )
-
-            st.plotly_chart(fig_hist, use_container_width=True)
+            _apply_plot_theme(fig_subset, plot_theme)
+            st.plotly_chart(fig_subset, use_container_width=True, theme=None)
 
         st.markdown(
             f"**Estimación (1 realización):** m = {state['mu_hat_1']:.3f}, σ̂² = {state['var_hat_1']:.3f}\n\n"
@@ -603,23 +622,7 @@ def render_ejemplo2():
     from plotly.subplots import make_subplots
 
     st.subheader("Ejemplo 2 — Proceso estacionario vs no estacionario y función de correlación")
-
-    # Fuerza legibilidad en Plotly aunque Streamlit esté en dark
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stPlotlyChart"] svg text{
-            fill: #000000 !important;
-            opacity: 1 !important;
-        }
-        div[data-testid="stPlotlyChart"] svg line,
-        div[data-testid="stPlotlyChart"] svg path{
-            stroke-opacity: 1 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    plot_theme = _get_plot_theme()
 
     with st.expander("Descripción y pasos a seguir", expanded=True):
         st.markdown(
@@ -794,27 +797,22 @@ def render_ejemplo2():
         tau = state["tau"]
         r = state["r"]
 
-        axis_title_font = dict(family="Arial Black", size=14, color="black")
-        tick_font = dict(family="Arial Black", size=12, color="black")
+        axis_title_font = dict(family="Arial Black", size=14, color=plot_theme["font_color"])
+        tick_font = dict(family="Arial Black", size=12, color=plot_theme["font_color"])
 
         fig1 = go.Figure()
         fig1.add_trace(go.Scatter(x=t, y=x, mode="lines", line=dict(width=2), name="x(t)"))
         fig1.update_layout(
-            title=dict(text="Realización x(t)", font=dict(family="Arial Black", size=16, color="black")),
+            title=dict(text="Realización x(t)", font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])),
             height=320,
             margin=dict(l=55, r=20, t=65, b=55),
             hovermode="x unified",
             showlegend=False,
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            font=dict(family="Arial Black", color="black"),
-            hoverlabel=dict(bgcolor="white", font=dict(color="black")),
         )
         fig1.update_xaxes(
             title_text="Tiempo (s)",
             title_font=axis_title_font,
             tickfont=tick_font,
-            showgrid=True, gridcolor="lightgray",
             showline=True, linewidth=2, linecolor="black",
             ticks="outside", tickwidth=2,
             rangeslider=dict(visible=True)
@@ -823,11 +821,11 @@ def render_ejemplo2():
             title_text="Amplitud",
             title_font=axis_title_font,
             tickfont=tick_font,
-            showgrid=True, gridcolor="lightgray",
             showline=True, linewidth=2, linecolor="black",
             ticks="outside", tickwidth=2
         )
-        st.plotly_chart(fig1, use_container_width=True)
+        _apply_plot_theme(fig1, plot_theme)
+        st.plotly_chart(fig1, use_container_width=True, theme=None)
 
         row2_col1, row2_col2 = st.columns(2)
 
@@ -836,21 +834,26 @@ def render_ejemplo2():
             fig2.add_trace(go.Scatter(x=t, y=m_hat, mode="lines", line=dict(width=2, color="blue"), name="Media"))
             fig2.add_trace(go.Scatter(x=t, y=v_hat, mode="lines", line=dict(width=2, color="firebrick"), name="Varianza"))
             fig2.update_layout(
-                title=dict(text="Media y varianza estimadas en el tiempo", font=dict(family="Arial Black", size=16, color="black")),
+                title=dict(
+                    text="Media y varianza estimadas en el tiempo",
+                    font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])
+                ),
                 height=320,
                 margin=dict(l=55, r=20, t=65, b=55),
                 hovermode="x unified",
-                legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="left", x=0),
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
-                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.05,
+                    xanchor="left",
+                    x=0,
+                    font=dict(color=plot_theme["font_color"])
+                ),
             )
             fig2.update_xaxes(
                 title_text="Tiempo (s)",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
                 showline=True, linewidth=2, linecolor="black",
                 ticks="outside", tickwidth=2,
                 rangeslider=dict(visible=True)
@@ -859,31 +862,29 @@ def render_ejemplo2():
                 title_text="Valor",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
                 showline=True, linewidth=2, linecolor="black",
                 ticks="outside", tickwidth=2
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            _apply_plot_theme(fig2, plot_theme)
+            st.plotly_chart(fig2, use_container_width=True, theme=None)
 
         with row2_col2:
             fig3 = go.Figure()
             fig3.add_trace(go.Scatter(x=tau, y=r, mode="lines", line=dict(width=2), name="R̂(τ)"))
             fig3.update_layout(
-                title=dict(text="Autocorrelación estimada", font=dict(family="Arial Black", size=16, color="black")),
+                title=dict(
+                    text="Autocorrelación estimada",
+                    font=dict(family="Arial Black", size=16, color=plot_theme["font_color"])
+                ),
                 height=320,
                 margin=dict(l=55, r=20, t=65, b=55),
                 hovermode="x unified",
                 showlegend=False,
-                paper_bgcolor="white",
-                plot_bgcolor="white",
-                font=dict(family="Arial Black", color="black"),
-                hoverlabel=dict(bgcolor="white", font=dict(color="black")),
             )
             fig3.update_xaxes(
                 title_text="Retardo τ (s)",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
                 showline=True, linewidth=2, linecolor="black",
                 ticks="outside", tickwidth=2
             )
@@ -891,11 +892,11 @@ def render_ejemplo2():
                 title_text="R̂(τ)",
                 title_font=axis_title_font,
                 tickfont=tick_font,
-                showgrid=True, gridcolor="lightgray",
                 showline=True, linewidth=2, linecolor="black",
                 ticks="outside", tickwidth=2
             )
-            st.plotly_chart(fig3, use_container_width=True)
+            _apply_plot_theme(fig3, plot_theme)
+            st.plotly_chart(fig3, use_container_width=True, theme=None)
 
     # -------------------- Explicación + comparación + Q&A --------------------
     if state["ready"]:
@@ -1079,26 +1080,24 @@ def render_ejemplo3():
 
 
 
-    # --------- PLOTLY (siempre legible: fondo blanco + texto negro) ---------
+    plot_theme = _get_plot_theme()
+
+    # --------- PLOTLY (siempre legible según tema) ---------
     def _plotly_layout(fig, title):
         fig.update_layout(
-            title=title,
+            title=dict(text=title, font=dict(color=plot_theme["font_color"])),
             height=420,
             margin=dict(l=50, r=20, t=60, b=50),
-            paper_bgcolor="white",
-            plot_bgcolor="white",
-            font=dict(color="black"),
             hovermode="x unified",
             showlegend=True,
             # ✅ FIX hover negro:
             hoverlabel=dict(
-                bgcolor="white",
-                font=dict(color="black"),
-                bordercolor="black"
+                bgcolor=plot_theme["hover_bg"],
+                font=dict(color=plot_theme["hover_font"]),
+                bordercolor=plot_theme["axis_color"]
             ),
         )
-        fig.update_xaxes(showgrid=True, gridcolor="lightgray", linecolor="black")
-        fig.update_yaxes(showgrid=True, gridcolor="lightgray", linecolor="black")
+        _apply_plot_theme(fig, plot_theme)
 
     c_white = "blue"  # ruido blanco
     c_colored = "orange"  # ruido coloreado
@@ -1120,7 +1119,7 @@ def render_ejemplo3():
     fig1.update_xaxes(title_text="Tiempo (s)", rangeslider_visible=True)
     fig1.update_yaxes(title_text="Amplitud")
     _plotly_layout(fig1, f"Ruido en el tiempo — {data['etiqueta']}")
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True, theme=None)
 
     row2_col1, row2_col2 = st.columns(2)
 
@@ -1141,7 +1140,7 @@ def render_ejemplo3():
         fig3.update_xaxes(title_text="Frecuencia (Hz)")
         fig3.update_yaxes(title_text="S(f) (u.a.)", type="log")
         _plotly_layout(fig3, "PSD estimada — 1 realización")
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, use_container_width=True, theme=None)
 
     with row2_col2:
         fig4 = go.Figure()
@@ -1160,7 +1159,7 @@ def render_ejemplo3():
         fig4.update_xaxes(title_text="Frecuencia (Hz)")
         fig4.update_yaxes(title_text="S(f) (u.a.)", type="log")
         _plotly_layout(fig4, "PSD promedio")
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig4, use_container_width=True, theme=None)
 
     row3_col1, row3_col2 = st.columns(2)
 
@@ -1181,7 +1180,7 @@ def render_ejemplo3():
         fig2.update_xaxes(title_text="Retardo τ (s)")
         fig2.update_yaxes(title_text="Función de correlación")
         _plotly_layout(fig2, "Función de correlación estimada")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, theme=None)
 
     with row3_col2:
         fig5 = go.Figure()
@@ -1201,7 +1200,7 @@ def render_ejemplo3():
         fig5.update_xaxes(title_text="Valor")
         fig5.update_yaxes(title_text="Frecuencia")
         _plotly_layout(fig5, "Histograma ")
-        st.plotly_chart(fig5, use_container_width=True)
+        st.plotly_chart(fig5, use_container_width=True, theme=None)
 
     # --------- Explicación + ideas clave ---------
     with st.expander("Explicación y preguntas", expanded=True):
@@ -1245,34 +1244,23 @@ def render_ejemplo3():
 # -----------------------------
 
 def _plotly_layout_dyn(fig, title, height=380, showlegend=True, y_log=False, rangeslider=False):
+    plot_theme = _get_plot_theme()
     fig.update_layout(
-        title=title,
+        title=dict(text=title, font=dict(color=plot_theme["font_color"])),
         height=height,
         margin=dict(l=55, r=20, t=60, b=55),
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        font=dict(color="black"),
         hovermode="x unified",
         showlegend=showlegend,
         # FIX tooltip negro
         hoverlabel=dict(
-            bgcolor="white",
-            font=dict(color="black"),
-            bordercolor="black"
+            bgcolor=plot_theme["hover_bg"],
+            font=dict(color=plot_theme["hover_font"]),
+            bordercolor=plot_theme["axis_color"]
         )
     )
-    fig.update_xaxes(
-        showgrid=True, gridcolor="lightgray",
-        linecolor="black", title_font=dict(color="black"),
-        tickfont=dict(color="black"),
-        rangeslider_visible=rangeslider
-    )
-    fig.update_yaxes(
-        showgrid=True, gridcolor="lightgray",
-        linecolor="black", title_font=dict(color="black"),
-        tickfont=dict(color="black"),
-        type="log" if y_log else "linear"
-    )
+    _apply_plot_theme(fig, plot_theme)
+    fig.update_xaxes(rangeslider_visible=rangeslider)
+    fig.update_yaxes(type="log" if y_log else "linear")
     return fig
 
 
@@ -1358,7 +1346,7 @@ def _render_dyn1():
     fig1.update_xaxes(title_text="Tiempo (s)", rangeslider_visible=True)
     fig1.update_yaxes(title_text="Amplitud")
     _plotly_layout_dyn(fig1, "Realización del ruido", height=380, showlegend=False, rangeslider=True)
-    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig1, use_container_width=True, theme=None)
 
     # --- Plotly: Histograma (interactivo) ---
     fig2 = go.Figure()
@@ -1373,7 +1361,7 @@ def _render_dyn1():
     fig2.update_xaxes(title_text="Valor")
     fig2.update_yaxes(title_text="Densidad")
     _plotly_layout_dyn(fig2, "Histograma del ruido", height=380, showlegend=False)
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     q1 = st.radio(
@@ -1491,7 +1479,7 @@ def _render_dyn2():
     fig.update_xaxes(title_text="Tiempo (s)", rangeslider_visible=True)
     fig.update_yaxes(title_text="Amplitud")
     _plotly_layout_dyn(fig, "Realización x(t)", height=380, showlegend=False, rangeslider=True)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     # --- Plotly: Media y Varianza ---
     fig2 = go.Figure()
@@ -1510,7 +1498,7 @@ def _render_dyn2():
     fig2.update_xaxes(title_text="Tiempo (s)", rangeslider_visible=True)
     fig2.update_yaxes(title_text="Valor")
     _plotly_layout_dyn(fig2, "Media y varianza estimadas", height=380, showlegend=True, rangeslider=True)
-    st.plotly_chart(fig2, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     q1 = st.radio(
@@ -1638,7 +1626,7 @@ def _render_dyn3():
     fig.update_xaxes(title_text="Frecuencia (Hz)")
     fig.update_yaxes(title_text="S(f) (u.a.)", type="log")
     _plotly_layout_dyn(fig, "PSD promedio: ruido blanco vs ruido filtrado", height=420, showlegend=True, y_log=True)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
 
     st.markdown("#### Preguntas")
     q1 = st.radio(
