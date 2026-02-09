@@ -119,7 +119,7 @@ Cuando un sistema LTI es excitado por AWGN, la salida conserva la gaussianidad y
 - **AWGN a través de LTI:** S_Y(f) = |H(f)|² (N₀/2)   ;   R_Y(τ) = (N₀/2) ∫_{−∞}^{∞} h(u) h(u+τ) du
 - **Modelo en banda base:** r̃(t) = s̃(t) + ñ(t),   con  ñ(t) ~ AWGN complejo
 
-## Ecuaciones destacadas
+#### Ecuaciones destacadas
 
 $$m_X(t)=\mathbb{E}\{X(t)\}$$
 $$\sigma_X^2(t)=\mathbb{E}\{(X(t)-m_X(t))^2\}$$
@@ -128,16 +128,8 @@ $$S_X(f)=\int_{-\infty}^{\infty} R_X(\tau)\,e^{-j2\pi f\tau}\,d\tau$$
 $$Y(f)=X(f)\,H(f),\qquad S_Y(f)=|H(f)|^2 S_X(f)$$
 """
 
-MATERIALES_TEXT = """Para desarrollar las actividades de esta guía interactiva se recomienda contar con:
-
-- Una computadora personal con sistema operativo actualizado (Windows, Linux o macOS).
-- Python instalado (versión 3.8 o superior recomendada).
-- Un entorno de desarrollo como Visual Studio Code o PyCharm.
-**Las siguientes bibliotecas de Python:**
-- numpy para el manejo de arreglos y operaciones numéricas.
-- matplotlib para la generación de gráficas.
-- streamlit para la interfaz interactiva de la guía.
-- scipy para operaciones adicionales de filtrado, convolución y análisis en frecuencia.
+MATERIALES_TEXT = """
+- Dispositivo con acceso a internet
 """
 
 CONCLUSIONES_TEXT = """1. El ruido en telecomunicaciones se modela de forma natural como un proceso estocástico, porque su comportamiento no puede describirse con certeza determinista. A través de las simulaciones se verificó que, para el caso AWGN, la distribución de amplitud es aproximadamente gaussiana y que sus estadísticos de primer orden (media y varianza) permiten caracterizar de manera directa la dispersión y el nivel de incertidumbre que introduce en una señal.
