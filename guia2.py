@@ -787,76 +787,84 @@ def render_ejemplo1():
         T = st.number_input("Duración total T (s)", value=0.06, step=0.005, format="%.4f")
 
     if st.button("Generar señal y muestrear", key="ej2_ej1"):
-        # Señal "continua": muestreo muy fino para simular continuidad
-        f_max = max(f1, f2)
-        fs_cont = max(100 * f_max, 10_000) if f_max > 0 else 10_000
-        t_cont = np.arange(0, T, 1.0 / fs_cont)
-        x_cont = A1 * np.sin(2 * np.pi * f1 * t_cont) + A2 * np.sin(2 * np.pi * f2 * t_cont)
+        st.session_state.g2_ej1_run = True
 
-        # Señal muestreada
-        t_disc = np.arange(0, T, 1.0 / fs)
-        x_disc = A1 * np.sin(2 * np.pi * f1 * t_disc) + A2 * np.sin(2 * np.pi * f2 * t_disc)
-
-        fig = make_subplots(
-            rows=2,
-            cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.14,
-            subplot_titles=("Señal de tiempo continuo", "Señal muestreada"),
+    if not st.session_state.get("g2_ej1_run"):
+        st.info(
+            "Pulsa **Generar señal y muestrear** para generar la señal continua, muestrearla y ver las gráficas. Luego puedes cambiar los parámetros y la gráfica se actualizará automáticamente."
         )
-        fig.add_trace(
-            go.Scatter(x=t_cont, y=x_cont, mode="lines", name="x(t)"),
-            row=1,
-            col=1,
+        return
+
+    # Señal "continua": muestreo muy fino para simular continuidad
+    f_max = max(f1, f2)
+    fs_cont = max(100 * f_max, 10_000) if f_max > 0 else 10_000
+    t_cont = np.arange(0, T, 1.0 / fs_cont)
+    x_cont = A1 * np.sin(2 * np.pi * f1 * t_cont) + A2 * np.sin(2 * np.pi * f2 * t_cont)
+
+    # Señal muestreada
+    t_disc = np.arange(0, T, 1.0 / fs)
+    x_disc = A1 * np.sin(2 * np.pi * f1 * t_disc) + A2 * np.sin(2 * np.pi * f2 * t_disc)
+
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.14,
+        subplot_titles=("Señal de tiempo continuo", "Señal muestreada"),
+    )
+    fig.add_trace(
+        go.Scatter(x=t_cont, y=x_cont, mode="lines", name="x(t)"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
+        row=2,
+        col=1,
+    )
+    fig.update_yaxes(title_text="x(t)", row=1, col=1)
+    fig.update_yaxes(title_text="x[n]", row=2, col=1)
+    fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
+    fig.update_layout(
+        height=600,
+        margin=dict(l=40, r=20, t=80, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    # Explicación dinámica
+    f_max, f_nyq, nyq_msg = _nyquist_info(f1, f2, fs)
+    with st.expander("Explicación de la simulación y preguntas", expanded=True):
+        st.markdown(
+            "La señal continua se construye como la suma de dos sinusoides. "
+            "Al muestrearla, solo se conservan muestras cada 1/fₛ segundos. "
+            "La capacidad de reconstruir la señal original depende de la relación entre fₛ y la frecuencia máxima presente."
         )
-        fig.add_trace(
-            go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
-            row=2,
-            col=1,
+        st.markdown(nyq_msg)
+
+        # Preguntas y respuestas (conceptuales)
+        st.markdown("##### Preguntas y respuestas: ")
+        st.markdown("**1. ¿Qué ocurre si reducimos demasiado la frecuencia de muestreo fₛ?**")
+        st.markdown(
+            "**R:** La señal discreta comienza a perder detalle y puede aparecer aliasing, es decir, componentes de alta "
+            "frecuencia se reflejan como frecuencias más bajas."
         )
-        fig.update_yaxes(title_text="x(t)", row=1, col=1)
-        fig.update_yaxes(title_text="x[n]", row=2, col=1)
-        fig.update_xaxes(title_text="Tiempo (s)", row=2, col=1)
-        fig.update_layout(
-            height=600,
-            margin=dict(l=40, r=20, t=80, b=60),
-            hovermode="x unified",
-            showlegend=False,
+
+        st.markdown(
+            "**2. Si fmax = 300 Hz, ¿cuál es el valor mínimo de fₛ que respeta el criterio de Nyquist?**"
         )
-        plot_theme = _get_plot_theme()
-        _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
-        st.plotly_chart(fig, use_container_width=True, theme=None)
+        st.markdown("**R:** fₛ mínima = 2·f_max = 600 Hz.")
 
-        # Explicación dinámica
-        f_max, f_nyq, nyq_msg = _nyquist_info(f1, f2, fs)
-        with st.expander("Explicación de la simulación y preguntas", expanded=True):
-            st.markdown(
-                "La señal continua se construye como la suma de dos sinusoides. "
-                "Al muestrearla, solo se conservan muestras cada 1/fₛ segundos. "
-                "La capacidad de reconstruir la señal original depende de la relación entre fₛ y la frecuencia máxima presente."
-            )
-            st.markdown(nyq_msg)
-
-            # Preguntas y respuestas (conceptuales)
-            st.markdown("##### Preguntas y respuestas: ")
-            st.markdown("**1. ¿Qué ocurre si reducimos demasiado la frecuencia de muestreo fₛ?**")
-            st.markdown(
-                "**R:** La señal discreta comienza a perder detalle y puede aparecer aliasing, es decir, componentes de alta "
-                "frecuencia se reflejan como frecuencias más bajas."
-            )
-
-            st.markdown(
-                "**2. Si fmax = 300 Hz, ¿cuál es el valor mínimo de fₛ que respeta el criterio de Nyquist?**"
-            )
-            st.markdown("**R:** fₛ mínima = 2·f_max = 600 Hz.")
-
-            st.markdown(
-                "**3. ¿Qué ventaja tiene representar la señal tanto en continuo como en discreto en el mismo eje de tiempo?**"
-            )
-            st.markdown(
-                "**R:** Permite comparar visualmente qué tanta información de la forma de onda original se conserva luego del muestreo."
-            )
+        st.markdown(
+            "**3. ¿Qué ventaja tiene representar la señal tanto en continuo como en discreto en el mismo eje de tiempo?**"
+        )
+        st.markdown(
+            "**R:** Permite comparar visualmente qué tanta información de la forma de onda original se conserva luego del muestreo."
+        )
 
 # =========================================================
 # Ejemplo 2 – Aliasing y FFT
@@ -911,182 +919,190 @@ def render_ejemplo2():
         T = st.number_input("Duración total T (s)", value=0.08, step=0.005, format="%.4f", key="g2_ej2_T")
 
     if st.button("Analizar en frecuencia", key="g2_ej2_btn"):
-        # --- Señal discreta con fs elegido por el usuario ---
-        t_disc = np.arange(0, T, 1.0 / fs)
-        x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
+        st.session_state.g2_ej2_run = True
 
-        # --- FFT discreta y centrada en [-fs/2, fs/2] ---
-        N = len(x_disc)
-        X = np.fft.fft(x_disc)
-        freqs = np.fft.fftfreq(N, d=1.0 / fs)      # frecuencias en Hz, positivas y negativas
-        X_shift = np.fft.fftshift(X)
-        freqs_shift = np.fft.fftshift(freqs)
-        X_mag_shift = np.abs(X_shift) / N
+    if not st.session_state.get("g2_ej2_run"):
+        st.info(
+            "Pulsa **Analizar en frecuencia** para calcular la FFT y ver los espectros. Luego puedes cambiar los parámetros y las gráficas se actualizarán automáticamente."
+        )
+        return
 
-        # --- Gráfica: señal discreta y espectros (banda base + réplicas) ---
-        fig = make_subplots(
-            rows=3,
-            cols=1,
-            vertical_spacing=0.18,
-            subplot_titles=(
-                "Señal discreta en el tiempo",
-                "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
-                "Réplicas espectrales alrededor de k·fₛ (k = -2…2)",
-            ),
-        )
+    # --- Señal discreta con fs elegido por el usuario ---
+    t_disc = np.arange(0, T, 1.0 / fs)
+    x_disc = _sample_sinusoid(A1, f1, t_disc, fs) + _sample_sinusoid(A2, f2, t_disc, fs)
 
-        # Señal discreta en el tiempo
-        fig.add_trace(
-            go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
-            row=1,
-            col=1,
-        )
-        fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
-        fig.update_yaxes(title_text="x[n]", row=1, col=1)
+    # --- FFT discreta y centrada en [-fs/2, fs/2] ---
+    N = len(x_disc)
+    X = np.fft.fft(x_disc)
+    freqs = np.fft.fftfreq(N, d=1.0 / fs)      # frecuencias en Hz, positivas y negativas
+    X_shift = np.fft.fftshift(X)
+    freqs_shift = np.fft.fftshift(freqs)
+    X_mag_shift = np.abs(X_shift) / N
 
-        # Espectro centrado en [-fs/2, fs/2] (banda base)
-        base_color = "#1f77b4"
-        base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
-        fig.add_trace(
-            go.Scatter(
-                x=base_x_lines,
-                y=base_y_lines,
-                mode="lines",
-                line=dict(color=base_color, width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            ),
-            row=2,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=freqs_shift,
-                y=X_mag_shift,
-                mode="markers",
-                name="|X(f)|",
-                marker=dict(color=base_color, size=6),
-            ),
-            row=2,
-            col=1,
-        )
-        fig.update_xaxes(range=[-fs / 2, fs / 2], title_text="Frecuencia (Hz)", row=2, col=1)
-        fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
+    # --- Gráfica: señal discreta y espectros (banda base + réplicas) ---
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=(
+            "Señal discreta en el tiempo",
+            "Espectro de magnitud centrado en [-fₛ/2, fₛ/2]",
+            "Réplicas espectrales alrededor de k·fₛ (k = -2…2)",
+        ),
+    )
 
-        # Réplicas espectrales alrededor de k·fs (k = -2…2)
-        k_max = 2
-        freqs_rep = np.concatenate([freqs_shift + k * fs for k in range(-k_max, k_max + 1)])
-        mags_rep = np.tile(X_mag_shift, 2 * k_max + 1)
+    # Señal discreta en el tiempo
+    fig.add_trace(
+        go.Scatter(x=t_disc, y=x_disc, mode="markers", name="x[n]"),
+        row=1,
+        col=1,
+    )
+    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1)
+    fig.update_yaxes(title_text="x[n]", row=1, col=1)
 
-        replica_color = "#ff7f0e"
-        rep_x_lines, rep_y_lines = _build_stem_lines(freqs_rep, mags_rep)
-        fig.add_trace(
-            go.Scatter(
-                x=rep_x_lines,
-                y=rep_y_lines,
-                mode="lines",
-                line=dict(color=replica_color, width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            ),
-            row=3,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=freqs_rep,
-                y=mags_rep,
-                mode="markers",
-                name="Réplicas",
-                marker=dict(color=replica_color, size=6),
-            ),
-            row=3,
-            col=1,
-        )
-        fig.update_xaxes(
-            range=[-(k_max + 0.5) * fs, (k_max + 0.5) * fs],
-            title_text="Frecuencia (Hz)",
-            row=3,
-            col=1,
-        )
-        fig.update_yaxes(title_text="|X(f)|", row=3, col=1)
-
-        fig.update_layout(
-            height=750,
-            margin=dict(l=40, r=20, t=90, b=60),
-            hovermode="x unified",
+    # Espectro centrado en [-fs/2, fs/2] (banda base)
+    base_color = "#1f77b4"
+    base_x_lines, base_y_lines = _build_stem_lines(freqs_shift, X_mag_shift)
+    fig.add_trace(
+        go.Scatter(
+            x=base_x_lines,
+            y=base_y_lines,
+            mode="lines",
+            line=dict(color=base_color, width=1),
+            hoverinfo="skip",
             showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=freqs_shift,
+            y=X_mag_shift,
+            mode="markers",
+            name="|X(f)|",
+            marker=dict(color=base_color, size=6),
+        ),
+        row=2,
+        col=1,
+    )
+    fig.update_xaxes(range=[-fs / 2, fs / 2], title_text="Frecuencia (Hz)", row=2, col=1)
+    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
+
+    # Réplicas espectrales alrededor de k·fs (k = -2…2)
+    k_max = 2
+    freqs_rep = np.concatenate([freqs_shift + k * fs for k in range(-k_max, k_max + 1)])
+    mags_rep = np.tile(X_mag_shift, 2 * k_max + 1)
+
+    replica_color = "#ff7f0e"
+    rep_x_lines, rep_y_lines = _build_stem_lines(freqs_rep, mags_rep)
+    fig.add_trace(
+        go.Scatter(
+            x=rep_x_lines,
+            y=rep_y_lines,
+            mode="lines",
+            line=dict(color=replica_color, width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=freqs_rep,
+            y=mags_rep,
+            mode="markers",
+            name="Réplicas",
+            marker=dict(color=replica_color, size=6),
+        ),
+        row=3,
+        col=1,
+    )
+    fig.update_xaxes(
+        range=[-(k_max + 0.5) * fs, (k_max + 0.5) * fs],
+        title_text="Frecuencia (Hz)",
+        row=3,
+        col=1,
+    )
+    fig.update_yaxes(title_text="|X(f)|", row=3, col=1)
+
+    fig.update_layout(
+        height=750,
+        margin=dict(l=40, r=20, t=90, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    # --- Análisis de Nyquist / aliasing ---
+    f_max, f_nyq, nyq_msg = _nyquist_info(f1, f2, fs)
+
+    with st.expander("Explicación de la simulación y preguntas", expanded=True):
+        if fs < 2 * f_max:
+            st.markdown(
+                "La frecuencia de muestreo seleccionada es **insuficiente** respecto a la frecuencia máxima de la señal. "
+                "En el espectro centrado en [-fs/2, fs/2] las componentes de alta frecuencia se han plegado hacia "
+                "la banda base, dando lugar a aliasing: aparecen picos en posiciones que no coinciden con f1 y f2 originales."
+            )
+        else:
+            st.markdown(
+                "La frecuencia de muestreo seleccionada es **suficiente** para cumplir el criterio de Nyquist. "
+                "En el espectro centrado en [-fs/2, fs/2] las componentes correspondientes a f1 y f2 "
+                "aparecen en las posiciones esperadas y no hay plegamiento evidente."
+            )
+
+        st.markdown(nyq_msg)
+        st.markdown(
+            "Si una componente cae **exactamente** en $f_s/2$, una senoide con fase 0 se muestrea en todos ceros. "
+            "Para evitar esta degeneración y representar correctamente el espectro en Nyquist, se aplica un "
+            "desfase de $\\pi/2$ a esa componente."
         )
-        plot_theme = _get_plot_theme()
-        _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
-        st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        # --- Análisis de Nyquist / aliasing ---
-        f_max, f_nyq, nyq_msg = _nyquist_info(f1, f2, fs)
+        st.markdown("##### Recordatorio:")
+        st.markdown(
+            "- Toda señal real tiene espectro simétrico: componentes positivas y negativas.\n"
+            "- La FFT de la señal muestreada representa una copia del espectro en la **banda base** [-fs/2, fs/2].\n"
+            "- Si fs es insuficiente (no cumple Nyquist), las componentes de alta frecuencia se pliegan dentro de esa banda base.\n"
+            "- Esas componentes plegadas se interpretan como frecuencias más bajas: esto es el **aliasing**.\n"
+            "- El espectro de una señal muestreada idealmente se replica periódicamente en frecuencia cada fs, y esas réplicas aparecen alrededor de kfs para todos los enteros 𝑘"
+        )
 
-        with st.expander("Explicación de la simulación y preguntas", expanded=True):
-            if fs < 2 * f_max:
-                st.markdown(
-                    "La frecuencia de muestreo seleccionada es **insuficiente** respecto a la frecuencia máxima de la señal. "
-                    "En el espectro centrado en [-fs/2, fs/2] las componentes de alta frecuencia se han plegado hacia "
-                    "la banda base, dando lugar a aliasing: aparecen picos en posiciones que no coinciden con f1 y f2 originales."
-                )
-            else:
-                st.markdown(
-                    "La frecuencia de muestreo seleccionada es **suficiente** para cumplir el criterio de Nyquist. "
-                    "En el espectro centrado en [-fs/2, fs/2] las componentes correspondientes a f1 y f2 "
-                    "aparecen en las posiciones esperadas y no hay plegamiento evidente."
-                )
+        # Preguntas y respuestas
+        st.markdown("##### Preguntas y respuestas")
 
-            st.markdown(nyq_msg)
-            st.markdown(
-                "Si una componente cae **exactamente** en $f_s/2$, una senoide con fase 0 se muestrea en todos ceros. "
-                "Para evitar esta degeneración y representar correctamente el espectro en Nyquist, se aplica un "
-                "desfase de $\\pi/2$ a esa componente."
-            )
+        st.markdown("**1. ¿Qué representan los picos en el espectro centrado en [-fₛ/2, fₛ/2]?**")
+        st.markdown(
+            "**R:** Representan las componentes senoidales que ve el sistema discreto. "
+            "Si hay aliasing, estas componentes no coinciden necesariamente con las frecuencias originales f1, f2."
+        )
 
-            st.markdown("##### Recordatorio:")
-            st.markdown(
-                "- Toda señal real tiene espectro simétrico: componentes positivas y negativas.\n"
-                "- La FFT de la señal muestreada representa una copia del espectro en la **banda base** [-fs/2, fs/2].\n"
-                "- Si fs es insuficiente (no cumple Nyquist), las componentes de alta frecuencia se pliegan dentro de esa banda base.\n"
-                "- Esas componentes plegadas se interpretan como frecuencias más bajas: esto es el **aliasing**.\n"
-                "- El espectro de una señal muestreada idealmente se replica periódicamente en frecuencia cada fs, y esas réplicas aparecen alrededor de kfs para todos los enteros 𝑘"
-            )
+        st.markdown("**2. ¿Cómo puedes saber, solo viendo el espectro centrado, si hubo aliasing?**")
+        st.markdown(
+            "**R:** Comparando fs con la frecuencia máxima presente en la señal y verificando si fs < 2 fmax. "
+            "Si esta condición se no se cumple, los picos observados en la banda base corresponden a frecuencias plegadas."
+        )
 
-            # Preguntas y respuestas
-            st.markdown("##### Preguntas y respuestas")
+        st.markdown("**3. ¿Por qué es tan importante elegir correctamente fs antes de muestrear?**")
+        st.markdown(
+            "**R:** Porque si fs es demasiado baja, el aliasing hace que diferentes señales continuas produzcan la misma "
+            "secuencia discreta, perdiendo información de forma irreversible."
+        )
 
-            st.markdown("**1. ¿Qué representan los picos en el espectro centrado en [-fₛ/2, fₛ/2]?**")
-            st.markdown(
-                "**R:** Representan las componentes senoidales que ve el sistema discreto. "
-                "Si hay aliasing, estas componentes no coinciden necesariamente con las frecuencias originales f1, f2."
-            )
+        st.markdown("**4. ¿Qué indican los picos en el espectro |X(f)| de la FFT discreta?**")
+        st.markdown(
+            "**R:** Indican la presencia de componentes senoidales a las frecuencias correspondientes. "
+            "Su altura se relaciona con la amplitud de cada componente en la señal muestreada."
+        )
 
-            st.markdown("**2. ¿Cómo puedes saber, solo viendo el espectro centrado, si hubo aliasing?**")
-            st.markdown(
-                "**R:** Comparando fs con la frecuencia máxima presente en la señal y verificando si fs < 2 fmax. "
-                "Si esta condición se no se cumple, los picos observados en la banda base corresponden a frecuencias plegadas."
-            )
-
-            st.markdown("**3. ¿Por qué es tan importante elegir correctamente fs antes de muestrear?**")
-            st.markdown(
-                "**R:** Porque si fs es demasiado baja, el aliasing hace que diferentes señales continuas produzcan la misma "
-                "secuencia discreta, perdiendo información de forma irreversible."
-            )
-
-            st.markdown("**4. ¿Qué indican los picos en el espectro |X(f)| de la FFT discreta?**")
-            st.markdown(
-                "**R:** Indican la presencia de componentes senoidales a las frecuencias correspondientes. "
-                "Su altura se relaciona con la amplitud de cada componente en la señal muestreada."
-            )
-
-            st.markdown("**5. ¿Por qué no es posible corregir el aliasing solo procesando la señal muestreada?**")
-            st.markdown(
-                "**R:** Porque la información ya se perdió durante el muestreo. Diferentes señales continuas pueden producir "
-                "la misma secuencia discreta cuando hay aliasing, por lo que no es posible reconstruir de forma única la señal original."
-            )
+        st.markdown("**5. ¿Por qué no es posible corregir el aliasing solo procesando la señal muestreada?**")
+        st.markdown(
+            "**R:** Porque la información ya se perdió durante el muestreo. Diferentes señales continuas pueden producir "
+            "la misma secuencia discreta cuando hay aliasing, por lo que no es posible reconstruir de forma única la señal original."
+        )
 
 # =========================================================
 # Ejemplo 3 – LTI en tiempo
@@ -1114,111 +1130,119 @@ def render_ejemplo3():
     tipo_filtro = st.selectbox("Tipo de sistema h[n]", ["Filtro pasa bajas", "Suavizado exponencial"])
 
     if st.button("Aplicar sistema LTI", key="ej3_btn"):
-        n = np.arange(0, 64)
+        st.session_state.g2_ej3_run = True
 
-        if tipo_entrada == "Pulso rectangular":
-            x = np.zeros_like(n, dtype=float)
-            x[10:20] = 1.0
-        else:
-            x = np.sin(2 * np.pi * 0.05 * n) + 0.6 * np.sin(2 * np.pi * 0.15 * n)
+    if not st.session_state.get("g2_ej3_run"):
+        st.info(
+            "Pulsa **Aplicar sistema LTI** para calcular la convolución y ver las gráficas. Luego puedes cambiar los parámetros y las gráficas se actualizarán automáticamente."
+        )
+        return
 
-        n_h = np.arange(0, M)
+    n = np.arange(0, 64)
+
+    if tipo_entrada == "Pulso rectangular":
+        x = np.zeros_like(n, dtype=float)
+        x[10:20] = 1.0
+    else:
+        x = np.sin(2 * np.pi * 0.05 * n) + 0.6 * np.sin(2 * np.pi * 0.15 * n)
+
+    n_h = np.arange(0, M)
+    if tipo_filtro == "Filtro pasa bajas":
+        fc = 0.2
+        h = 2 * fc * np.sinc(2 * fc * (n_h - (M - 1) / 2))
+        h *= np.hamming(M)
+    else:
+        alpha = 0.4
+        h = (1 - alpha) * (alpha ** n_h)
+
+    h = h / np.sum(h)
+    y = np.convolve(x, h, mode="full")
+
+    n_y = np.arange(0, len(y))
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=("Entrada x[n]", "Respuesta al impulso del sistema", "Salida y[n] = x[n] * h[n]"),
+    )
+    fig.add_trace(go.Scatter(x=n, y=x, mode="markers", name="x[n]"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"), row=2, col=1)
+    fig.add_trace(go.Scatter(x=n_y, y=y, mode="markers", name="y[n]"), row=3, col=1)
+
+    fig.update_xaxes(title_text="n", row=1, col=1)
+    fig.update_xaxes(title_text="n", row=2, col=1)
+    fig.update_xaxes(title_text="n", row=3, col=1)
+    fig.update_yaxes(title_text="x[n]", row=1, col=1)
+    fig.update_yaxes(title_text="h[n]", row=2, col=1)
+    fig.update_yaxes(title_text="y[n]", row=3, col=1)
+
+    fig.update_layout(
+        height=700,
+        margin=dict(l=40, r=20, t=90, b=60),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    # Explicación dinámica (mejor conectada con las gráficas)
+    with st.expander("Explicación de la simulación y preguntas", expanded=True):
+        st.markdown(
+            "En un sistema LTI, toda la información del sistema está contenida en su respuesta al impulso $h[n]$. "
+            "La salida se calcula con la convolución discreta:\n\n"
+            "$$y[n] = \\sum_{k=-\\infty}^{\\infty} x[k]\\,h[n-k]$$\n\n"
+            "Esto puede interpretarse así: para cada $n$, el sistema toma un fragmento de la entrada $x[k]$ y lo combina con los "
+            "pesos del filtro $h[n]$ , es decir, una suma ponderada."
+        )
+
         if tipo_filtro == "Filtro pasa bajas":
-            fc = 0.2
-            h = 2 * fc * np.sinc(2 * fc * (n_h - (M - 1) / 2))
-            h *= np.hamming(M)
+            st.markdown(
+                "**Caso: Filtro pasa bajas FIR (sinc con ventana).**\n\n"
+                "Aquí $h[n]$ se construye con una sinc ideal truncada y suavizada con una ventana. "
+                "Este tipo de respuesta al impulso es típica de un pasa bajas discreto.\n\n"
+                "- Cada muestra de salida es una suma ponderada de varias muestras de la entrada.\n"
+                "- Los cambios bruscos (bordes) se suavizan porque se atenúan las componentes de alta frecuencia.\n"
+                "- Al aumentar $M$, el suavizado es mayor y la transición es más lenta, pero aumenta el retardo efectivo."
+            )
         else:
-            alpha = 0.4
-            h = (1 - alpha) * (alpha ** n_h)
+            st.markdown(
+                "**Caso: Suavizado exponencial o respuesta decreciente**.\n\n"
+                " Aquí $h[n]=(1-\\alpha)\\alpha^n$ para $n=0,1,\\dots,M-1$ (normalizado para conservar ganancia DC).\n\n"
+                "- La salida es una suma ponderada donde las muestras más recientes tienen más peso.\n"
+                "- Esto introduce memoria: el sistema “arrastra” información pasada, lo cual suaviza la señal.\n"
+                "- Si $\\alpha$ es más grande (cerca de 1), la memoria es más larga; si es más pequeña, el sistema responde más rápido."
+            )
 
-        h = h / np.sum(h)
-        y = np.convolve(x, h, mode="full")
-
-        n_y = np.arange(0, len(y))
-
-        fig = make_subplots(
-            rows=3,
-            cols=1,
-            vertical_spacing=0.18,
-            subplot_titles=("Entrada x[n]", "Respuesta al impulso del sistema", "Salida y[n] = x[n] * h[n]"),
+        st.markdown(
+            " **Cómo interpretar las gráficas:**\n"
+            "- 1) **x(n) (entrada):** Señal de entrada que ingresa al sistema LTI.\n"
+            "- 2) **h(n) (respuesta al impulso del sistema LTI):** Son los pesos que el sistema usa.\n"
+            "- 3) **y(n) (salida):** resulta de aplicar esos pesos a la entrada mediante la convolución.\n\n"
+            "En términos simples: $y[n]$ se obtiene como el resultado de “deslizar” $h[n]$ sobre $x[n]$ y calcular una suma ponderada en cada desplazamiento."
         )
-        fig.add_trace(go.Scatter(x=n, y=x, mode="markers", name="x[n]"), row=1, col=1)
-        fig.add_trace(go.Scatter(x=n_h, y=h, mode="markers", name="h[n]"), row=2, col=1)
-        fig.add_trace(go.Scatter(x=n_y, y=y, mode="markers", name="y[n]"), row=3, col=1)
 
-        fig.update_xaxes(title_text="n", row=1, col=1)
-        fig.update_xaxes(title_text="n", row=2, col=1)
-        fig.update_xaxes(title_text="n", row=3, col=1)
-        fig.update_yaxes(title_text="x[n]", row=1, col=1)
-        fig.update_yaxes(title_text="h[n]", row=2, col=1)
-        fig.update_yaxes(title_text="y[n]", row=3, col=1)
-
-        fig.update_layout(
-            height=700,
-            margin=dict(l=40, r=20, t=90, b=60),
-            hovermode="x unified",
-            showlegend=False,
+        # Preguntas y respuestas
+        st.markdown("##### Preguntas y respuestas")
+        st.markdown("**1. ¿Por qué un filtro promediador se considera un sistema pasa bajas?**")
+        st.markdown(
+            "**R:** Porque suaviza la señal y atenúa las variaciones rápidas (componentes de alta frecuencia), "
+            "dejando pasar principalmente las variaciones lentas."
         )
-        plot_theme = _get_plot_theme()
-        _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13), yshift=12)
-        st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        # Explicación dinámica (mejor conectada con las gráficas)
-        with st.expander("Explicación de la simulación y preguntas", expanded=True):
-            st.markdown(
-                "En un sistema LTI, toda la información del sistema está contenida en su respuesta al impulso $h[n]$. "
-                "La salida se calcula con la convolución discreta:\n\n"
-                "$$y[n] = \\sum_{k=-\\infty}^{\\infty} x[k]\\,h[n-k]$$\n\n"
-                "Esto puede interpretarse así: para cada $n$, el sistema toma un fragmento de la entrada $x[k]$ y lo combina con los "
-                "pesos del filtro $h[n]$ , es decir, una suma ponderada."
-            )
+        st.markdown("**2. ¿Qué interpretación física tiene la convolución en este contexto?**")
+        st.markdown(
+            "**R:** Cada muestra de y[n] es el resultado de sumar copias desplazadas de h[n] ponderadas por los valores de x[n]; "
+            "el sistema 'promedia' o 'dispersa' la energía de la señal en el tiempo."
+        )
 
-            if tipo_filtro == "Filtro pasa bajas":
-                st.markdown(
-                    "**Caso: Filtro pasa bajas FIR (sinc con ventana).**\n\n"
-                    "Aquí $h[n]$ se construye con una sinc ideal truncada y suavizada con una ventana. "
-                    "Este tipo de respuesta al impulso es típica de un pasa bajas discreto.\n\n"
-                    "- Cada muestra de salida es una suma ponderada de varias muestras de la entrada.\n"
-                    "- Los cambios bruscos (bordes) se suavizan porque se atenúan las componentes de alta frecuencia.\n"
-                    "- Al aumentar $M$, el suavizado es mayor y la transición es más lenta, pero aumenta el retardo efectivo."
-                )
-            else:
-                st.markdown(
-                    "**Caso: Suavizado exponencial o respuesta decreciente**.\n\n"
-                    " Aquí $h[n]=(1-\\alpha)\\alpha^n$ para $n=0,1,\\dots,M-1$ (normalizado para conservar ganancia DC).\n\n"
-                    "- La salida es una suma ponderada donde las muestras más recientes tienen más peso.\n"
-                    "- Esto introduce memoria: el sistema “arrastra” información pasada, lo cual suaviza la señal.\n"
-                    "- Si $\\alpha$ es más grande (cerca de 1), la memoria es más larga; si es más pequeña, el sistema responde más rápido."
-                )
-
-            st.markdown(
-                " **Cómo interpretar las gráficas:**\n"
-                "- 1) **x(n) (entrada):** Señal de entrada que ingresa al sistema LTI.\n"
-                "- 2) **h(n) (respuesta al impulso del sistema LTI):** Son los pesos que el sistema usa.\n"
-                "- 3) **y(n) (salida):** resulta de aplicar esos pesos a la entrada mediante la convolución.\n\n"
-                "En términos simples: $y[n]$ se obtiene como el resultado de “deslizar” $h[n]$ sobre $x[n]$ y calcular una suma ponderada en cada desplazamiento."
-            )
-
-            # Preguntas y respuestas
-            st.markdown("##### Preguntas y respuestas")
-            st.markdown("**1. ¿Por qué un filtro promediador se considera un sistema pasa bajas?**")
-            st.markdown(
-                "**R:** Porque suaviza la señal y atenúa las variaciones rápidas (componentes de alta frecuencia), "
-                "dejando pasar principalmente las variaciones lentas."
-            )
-
-            st.markdown("**2. ¿Qué interpretación física tiene la convolución en este contexto?**")
-            st.markdown(
-                "**R:** Cada muestra de y[n] es el resultado de sumar copias desplazadas de h[n] ponderadas por los valores de x[n]; "
-                "el sistema 'promedia' o 'dispersa' la energía de la señal en el tiempo."
-            )
-
-            st.markdown("**3. ¿Cómo afectaría aumentar el valor de M en el filtro pasabajas?**")
-            st.markdown(
-                "**R:** El filtro se vuelve más suave: la salida cambia más lentamente y se reducen aún más las componentes de alta "
-                "frecuencia, pero se pierde detalle temporal."
-            )
+        st.markdown("**3. ¿Cómo afectaría aumentar el valor de M en el filtro pasabajas?**")
+        st.markdown(
+            "**R:** El filtro se vuelve más suave: la salida cambia más lentamente y se reducen aún más las componentes de alta "
+            "frecuencia, pero se pierde detalle temporal."
+        )
 
 
 # =========================================================
@@ -1248,239 +1272,247 @@ def render_ejemplo4():
     T = st.number_input("Duración total T (s)", value=0.05, step=0.005, format="%.4f", key="ej4_T")
 
     if st.button("Aplicar filtro en frecuencia", key="ej4_btn"):
-        # Señal con varias sinusoides
-        t = np.arange(0, T, 1.0 / fs)
-        x = (
-            np.sin(2 * np.pi * 100 * t)
-            + 0.7 * np.sin(2 * np.pi * 400 * t)
-            + 0.5 * np.sin(2 * np.pi * 800 * t)
-        )
+        st.session_state.g2_ej4_run = True
 
-        # Definir h[n]
-        N = len(t)
-        M = 33
-        if tipo_filtro == "Pasa bajas":
-            h = np.ones(M) / M
-        elif tipo_filtro == "Pasa altas":
-            h = np.zeros(M)
-            h[0] = 1.0
-            h[1] = -1.0
-        else:
-            alpha = 0.3
-            h = (1 - alpha) * (alpha ** np.arange(M))
+    if not st.session_state.get("g2_ej4_run"):
+        st.info(
+            "Pulsa **Aplicar filtro en frecuencia** para calcular la respuesta y ver las gráficas. Luego puedes cambiar los parámetros y las gráficas se actualizarán automáticamente."
+        )
+        return
 
-        # Señal de salida en el tiempo (convolución lineal)
-        y_time = np.convolve(x, h, mode="full")
-        t_out = np.arange(0, len(y_time)) / fs
+    # Señal con varias sinusoides
+    t = np.arange(0, T, 1.0 / fs)
+    x = (
+        np.sin(2 * np.pi * 100 * t)
+        + 0.7 * np.sin(2 * np.pi * 400 * t)
+        + 0.5 * np.sin(2 * np.pi * 800 * t)
+    )
 
-        # FFT de x y h (zero-padding para coincidir con la convolución lineal)
-        fft_len = N + M - 1
-        X = np.fft.fft(x, n=fft_len)
-        H = np.fft.fft(h, n=fft_len)
-        Y = X * H
+    # Definir h[n]
+    N = len(t)
+    M = 33
+    if tipo_filtro == "Pasa bajas":
+        h = np.ones(M) / M
+    elif tipo_filtro == "Pasa altas":
+        h = np.zeros(M)
+        h[0] = 1.0
+        h[1] = -1.0
+    else:
+        alpha = 0.3
+        h = (1 - alpha) * (alpha ** np.arange(M))
 
-        freqs = np.fft.fftfreq(fft_len, d=1.0 / fs)
-        idx_pos = freqs >= 0
-        fpos = freqs[idx_pos]
-        Xmag = np.abs(X[idx_pos]) / fft_len
-        Hmag = np.abs(H[idx_pos])
-        Ymag = np.abs(Y[idx_pos]) / fft_len
+    # Señal de salida en el tiempo (convolución lineal)
+    y_time = np.convolve(x, h, mode="full")
+    t_out = np.arange(0, len(y_time)) / fs
 
-        fig = make_subplots(
-            rows=5,
-            cols=1,
-            vertical_spacing=0.1,
-            subplot_titles=(
-                "Entrada en el tiempo",
-                "Espectro de entrada",
-                "Respuesta en frecuencia del filtro",
-                "Espectro de salida",
-                "Salida en el tiempo",
-            ),
-        )
-        spectrum_colors = {
-            "input": "#1f77b4",
-            "filter": "#ff7f0e",
-            "output": "#2ca02c",
-        }
-        time_colors = {
-            "input": "#9467bd",
-            "output": "#d62728",
-        }
-        fig.add_trace(
-            go.Scatter(
-                x=t,
-                y=x,
-                mode="lines",
-                name="x(t)",
-                line=dict(color=time_colors["input"], width=2),
-            ),
-            row=1,
-            col=1,
-        )
-        x_lines, y_lines = _build_stem_lines(fpos, Xmag)
-        fig.add_trace(
-            go.Scatter(
-                x=x_lines,
-                y=y_lines,
-                mode="lines",
-                line=dict(color=spectrum_colors["input"], width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            ),
-            row=2,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=fpos,
-                y=Xmag,
-                mode="markers",
-                name="|X(f)|",
-                marker=dict(color=spectrum_colors["input"], size=6),
-            ),
-            row=2,
-            col=1,
-        )
-        h_lines_x, h_lines_y = _build_stem_lines(fpos, Hmag)
-        fig.add_trace(
-            go.Scatter(
-                x=h_lines_x,
-                y=h_lines_y,
-                mode="lines",
-                line=dict(color=spectrum_colors["filter"], width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            ),
-            row=3,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=fpos,
-                y=Hmag,
-                mode="markers",
-                name="|H(f)|",
-                marker=dict(color=spectrum_colors["filter"], size=6),
-            ),
-            row=3,
-            col=1,
-        )
-        y_lines_x, y_lines_y = _build_stem_lines(fpos, Ymag)
-        fig.add_trace(
-            go.Scatter(
-                x=y_lines_x,
-                y=y_lines_y,
-                mode="lines",
-                line=dict(color=spectrum_colors["output"], width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            ),
-            row=4,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=fpos,
-                y=Ymag,
-                mode="markers",
-                name="|Y(f)|",
-                marker=dict(color=spectrum_colors["output"], size=6),
-            ),
-            row=4,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=t_out,
-                y=y_time,
-                mode="lines",
-                name="y(t)",
-                line=dict(color=time_colors["output"], width=2),
-            ),
-            row=5,
-            col=1,
-        )
+    # FFT de x y h (zero-padding para coincidir con la convolución lineal)
+    fft_len = N + M - 1
+    X = np.fft.fft(x, n=fft_len)
+    H = np.fft.fft(h, n=fft_len)
+    Y = X * H
 
-        fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Frecuencia (Hz)", row=3, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Frecuencia (Hz)", row=4, col=1, title_standoff=18)
-        fig.update_xaxes(title_text="Tiempo (s)", row=5, col=1, title_standoff=18)
-        fig.update_yaxes(title_text="Amplitud", row=1, col=1)
-        fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
-        fig.update_yaxes(title_text="|H(f)|", row=3, col=1)
-        fig.update_yaxes(title_text="|Y(f)|", row=4, col=1)
-        fig.update_yaxes(title_text="Amplitud", row=5, col=1)
+    freqs = np.fft.fftfreq(fft_len, d=1.0 / fs)
+    idx_pos = freqs >= 0
+    fpos = freqs[idx_pos]
+    Xmag = np.abs(X[idx_pos]) / fft_len
+    Hmag = np.abs(H[idx_pos])
+    Ymag = np.abs(Y[idx_pos]) / fft_len
 
-        fig.update_layout(
-            height=1050,
-            margin=dict(l=40, r=20, t=110, b=80),
-            hovermode="x unified",
+    fig = make_subplots(
+        rows=5,
+        cols=1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "Entrada en el tiempo",
+            "Espectro de entrada",
+            "Respuesta en frecuencia del filtro",
+            "Espectro de salida",
+            "Salida en el tiempo",
+        ),
+    )
+    spectrum_colors = {
+        "input": "#1f77b4",
+        "filter": "#ff7f0e",
+        "output": "#2ca02c",
+    }
+    time_colors = {
+        "input": "#9467bd",
+        "output": "#d62728",
+    }
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x,
+            mode="lines",
+            name="x(t)",
+            line=dict(color=time_colors["input"], width=2),
+        ),
+        row=1,
+        col=1,
+    )
+    x_lines, y_lines = _build_stem_lines(fpos, Xmag)
+    fig.add_trace(
+        go.Scatter(
+            x=x_lines,
+            y=y_lines,
+            mode="lines",
+            line=dict(color=spectrum_colors["input"], width=1),
+            hoverinfo="skip",
             showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=fpos,
+            y=Xmag,
+            mode="markers",
+            name="|X(f)|",
+            marker=dict(color=spectrum_colors["input"], size=6),
+        ),
+        row=2,
+        col=1,
+    )
+    h_lines_x, h_lines_y = _build_stem_lines(fpos, Hmag)
+    fig.add_trace(
+        go.Scatter(
+            x=h_lines_x,
+            y=h_lines_y,
+            mode="lines",
+            line=dict(color=spectrum_colors["filter"], width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=fpos,
+            y=Hmag,
+            mode="markers",
+            name="|H(f)|",
+            marker=dict(color=spectrum_colors["filter"], size=6),
+        ),
+        row=3,
+        col=1,
+    )
+    y_lines_x, y_lines_y = _build_stem_lines(fpos, Ymag)
+    fig.add_trace(
+        go.Scatter(
+            x=y_lines_x,
+            y=y_lines_y,
+            mode="lines",
+            line=dict(color=spectrum_colors["output"], width=1),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=4,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=fpos,
+            y=Ymag,
+            mode="markers",
+            name="|Y(f)|",
+            marker=dict(color=spectrum_colors["output"], size=6),
+        ),
+        row=4,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=t_out,
+            y=y_time,
+            mode="lines",
+            name="y(t)",
+            line=dict(color=time_colors["output"], width=2),
+        ),
+        row=5,
+        col=1,
+    )
+
+    fig.update_xaxes(title_text="Tiempo (s)", row=1, col=1, title_standoff=18)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=2, col=1, title_standoff=18)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=3, col=1, title_standoff=18)
+    fig.update_xaxes(title_text="Frecuencia (Hz)", row=4, col=1, title_standoff=18)
+    fig.update_xaxes(title_text="Tiempo (s)", row=5, col=1, title_standoff=18)
+    fig.update_yaxes(title_text="Amplitud", row=1, col=1)
+    fig.update_yaxes(title_text="|X(f)|", row=2, col=1)
+    fig.update_yaxes(title_text="|H(f)|", row=3, col=1)
+    fig.update_yaxes(title_text="|Y(f)|", row=4, col=1)
+    fig.update_yaxes(title_text="Amplitud", row=5, col=1)
+
+    fig.update_layout(
+        height=1050,
+        margin=dict(l=40, r=20, t=110, b=80),
+        hovermode="x unified",
+        showlegend=False,
+    )
+    plot_theme = _get_plot_theme()
+    _apply_plot_theme(fig, plot_theme, font_size=12)
+    fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    # Explicación dinámica
+    with st.expander("Explicación de la simulación y preguntas", expanded=True):
+        st.markdown(
+            "Este ejemplo muestra la misma idea del Ejemplo 3, pero vista desde el dominio de la frecuencia. "
+            "En un sistema LTI, la salida se obtiene como:\n\n"
+            "$$Y(f)=X(f)\\,H(f)$$\n\n"
+            "Es decir, cada componente frecuencial de la entrada se multiplica por la ganancia del filtro en esa frecuencia."
         )
-        plot_theme = _get_plot_theme()
-        _apply_plot_theme(fig, plot_theme, font_size=12)
-        fig.update_annotations(font=dict(color=plot_theme["font_color"], size=13))
-        st.plotly_chart(fig, use_container_width=True, theme=None)
 
-        # Explicación dinámica
-        with st.expander("Explicación de la simulación y preguntas", expanded=True):
+        st.markdown(
+            "**Cómo interpretar las gráficas:**\n"
+            "1) **|X(f)| (entrada):** aquí aparecen picos en las frecuencias que componen la señal.\n"
+            "2) **|H(f)| (filtro):** indica cuánto deja pasar o atenúa el sistema en cada frecuencia.\n"
+            "3) **|Y(f)| (salida):** es el resultado de “escalar” cada pico de la entrada según el valor de |H(f)| en esa misma frecuencia.\n"
+        )
+
+        if tipo_filtro.startswith("Pasa bajas"):
             st.markdown(
-                "Este ejemplo muestra la misma idea del Ejemplo 3, pero vista desde el dominio de la frecuencia. "
-                "En un sistema LTI, la salida se obtiene como:\n\n"
-                "$$Y(f)=X(f)\\,H(f)$$\n\n"
-                "Es decir, cada componente frecuencial de la entrada se multiplica por la ganancia del filtro en esa frecuencia."
+                "**Caso: Filtro pasa bajas.**\n"
+                "- |H(f)| es grande en bajas frecuencias y decrece hacia frecuencias altas.\n"
+
+                "- Es una señal más suave porque se eliminan variaciones rápidas."
+            )
+        elif tipo_filtro.startswith("Pasa altas"):
+            st.markdown(
+                "**Caso: Filtro pasa altas.**\n"
+                "- |H(f)| es pequeño cerca de 0 Hz y aumenta hacia frecuencias más altas.\n"
+
+                "- En el tiempo, el sistema resalta cambios rápidos (bordes o variaciones bruscas)."
+            )
+        else:
+            st.markdown(
+                "**Caso: Suavizado exponencial.**\n"
+                "- La respuesta al impulso decreciente genera un comportamiento tipo **pasa bajas gradual**.\n"
+                "- En |H(f)| la transición no es abrupta, por eso en |Y(f)| las componentes altas se atenúan de forma progresiva.\n"
+                "- En el tiempo, esto se interpreta como un promedio ponderado donde las muestras recientes pesan más."
             )
 
-            st.markdown(
-                "**Cómo interpretar las gráficas:**\n"
-                "1) **|X(f)| (entrada):** aquí aparecen picos en las frecuencias que componen la señal.\n"
-                "2) **|H(f)| (filtro):** indica cuánto deja pasar o atenúa el sistema en cada frecuencia.\n"
-                "3) **|Y(f)| (salida):** es el resultado de “escalar” cada pico de la entrada según el valor de |H(f)| en esa misma frecuencia.\n"
-            )
+        st.markdown(
+            "En otras palabras, en el tiempo se trabaja con convolución ($y[n]=x[n]*h[n]$) y en frecuencia con multiplicación "
+            "($Y(f)=X(f)\\,H(f)$). Son dos formas equivalentes de describir la misma relación entrada–sistema–salida."
+        )
 
-            if tipo_filtro.startswith("Pasa bajas"):
-                st.markdown(
-                    "**Caso: Filtro pasa bajas.**\n"
-                    "- |H(f)| es grande en bajas frecuencias y decrece hacia frecuencias altas.\n"
+        # Preguntas y respuestas
+        st.markdown("##### Preguntas y respuestas")
+        st.markdown(
+            "**1. ¿Qué sucede con las componentes de alta frecuencia cuando aplicamos un filtro pasa bajas?**")
+        st.markdown("**R:** Se atenúan, reduciendo su contribución en la señal de salida.")
 
-                    "- Es una señal más suave porque se eliminan variaciones rápidas."
-                )
-            elif tipo_filtro.startswith("Pasa altas"):
-                st.markdown(
-                    "**Caso: Filtro pasa altas.**\n"
-                    "- |H(f)| es pequeño cerca de 0 Hz y aumenta hacia frecuencias más altas.\n"
+        st.markdown("**2. ¿Cómo se observa un filtro pasa altas en la gráfica de |H(f)|?**")
+        st.markdown("**R:** Presenta magnitud pequeña en bajas frecuencias y mayor magnitud en frecuencias altas.")
 
-                    "- En el tiempo, el sistema resalta cambios rápidos (bordes o variaciones bruscas)."
-                )
-            else:
-                st.markdown(
-                    "**Caso: Suavizado exponencial.**\n"
-                    "- La respuesta al impulso decreciente genera un comportamiento tipo **pasa bajas gradual**.\n"
-                    "- En |H(f)| la transición no es abrupta, por eso en |Y(f)| las componentes altas se atenúan de forma progresiva.\n"
-                    "- En el tiempo, esto se interpreta como un promedio ponderado donde las muestras recientes pesan más."
-                )
-
-            st.markdown(
-                "En otras palabras, en el tiempo se trabaja con convolución ($y[n]=x[n]*h[n]$) y en frecuencia con multiplicación "
-                "($Y(f)=X(f)\\,H(f)$). Son dos formas equivalentes de describir la misma relación entrada–sistema–salida."
-            )
-
-            # Preguntas y respuestas
-            st.markdown("##### Preguntas y respuestas")
-            st.markdown(
-                "**1. ¿Qué sucede con las componentes de alta frecuencia cuando aplicamos un filtro pasa bajas?**")
-            st.markdown("**R:** Se atenúan, reduciendo su contribución en la señal de salida.")
-
-            st.markdown("**2. ¿Cómo se observa un filtro pasa altas en la gráfica de |H(f)|?**")
-            st.markdown("**R:** Presenta magnitud pequeña en bajas frecuencias y mayor magnitud en frecuencias altas.")
-
-            st.markdown("**3. ¿Por qué decimos que Y(f) = X(f)·H(f) es equivalente a y[n] = x[n] * h[n]?**")
-            st.markdown(
-                "**R:** Porque la Transformada de Fourier convierte la convolución en el tiempo en una multiplicación en frecuencia; "
-                "ambas representan la misma relación entrada–sistema–salida desde dos perspectivas distintas."
-            )
+        st.markdown("**3. ¿Por qué decimos que Y(f) = X(f)·H(f) es equivalente a y[n] = x[n] * h[n]?**")
+        st.markdown(
+            "**R:** Porque la Transformada de Fourier convierte la convolución en el tiempo en una multiplicación en frecuencia; "
+            "ambas representan la misma relación entrada–sistema–salida desde dos perspectivas distintas."
+        )
 
 
 # =========================================================

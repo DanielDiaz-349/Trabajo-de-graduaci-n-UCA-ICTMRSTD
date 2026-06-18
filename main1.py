@@ -846,6 +846,17 @@ def render_ejemplo1():
         }
     state = st.session_state.ej1_state
 
+    # Flags persistentes de paso completado y semillas persistidas.
+    # Las semillas solo cambian al pulsar el botón correspondiente, de modo
+    # que al variar un parámetro la gráfica cambia SOLO por ese parámetro y
+    # no por una nueva realización aleatoria.
+    st.session_state.setdefault("ej1_signal_done", False)
+    st.session_state.setdefault("ej1_noise_done", False)
+    st.session_state.setdefault("ej1_combine_done", False)
+    st.session_state.setdefault("ej1_ber_done", False)
+    st.session_state.setdefault("ej1_bits_seed", 12345)
+    st.session_state.setdefault("ej1_noise_seed", 67890)
+
     with st.expander("Descripcion y pasos", expanded=True):
         st.markdown(
             "**Pasos sugeridos**\n"
@@ -875,47 +886,84 @@ def render_ejemplo1():
         combine_clicked = b3.button("Combinar")
         ber_clicked = b4.button("Calcular BER")
 
-    # Lógica de botones
+    # --- Control de flujo de los botones ---
+    # Cada botón fija un flag persistente y, si introduce aleatoriedad,
+    # regenera SOLO entonces su semilla. El cálculo/render se hace después
+    # en CADA rerun usando los valores ACTUALES de los widgets.
     if gen_signal_clicked:
-        bits = np.random.randint(0, 2, size=int(nbits))
+        # Nueva realización de bits únicamente al pulsar "Generar señal".
+        st.session_state.ej1_bits_seed = int(np.random.randint(0, 2**31 - 1))
+        st.session_state.ej1_signal_done = True
+        # Al regenerar la señal se invalidan los pasos posteriores.
+        st.session_state.ej1_noise_done = False
+        st.session_state.ej1_combine_done = False
+        st.session_state.ej1_ber_done = False
+
+    if gen_noise_clicked:
+        if not st.session_state.ej1_signal_done:
+            st.warning("Primero genera la señal.")
+        else:
+            # Nueva realización de ruido únicamente al pulsar "Generar ruido".
+            st.session_state.ej1_noise_seed = int(np.random.randint(0, 2**31 - 1))
+            st.session_state.ej1_noise_done = True
+
+    if combine_clicked:
+        if not st.session_state.ej1_signal_done:
+            st.warning("Primero genera la señal.")
+        else:
+            # Si aún no se ha generado ruido, se fija una semilla para él.
+            if not st.session_state.ej1_noise_done:
+                st.session_state.ej1_noise_seed = int(np.random.randint(0, 2**31 - 1))
+                st.session_state.ej1_noise_done = True
+            st.session_state.ej1_combine_done = True
+
+    if ber_clicked:
+        if not st.session_state.ej1_signal_done:
+            st.warning("Genera primero la señal.")
+        else:
+            if not st.session_state.ej1_noise_done:
+                st.session_state.ej1_noise_seed = int(np.random.randint(0, 2**31 - 1))
+                st.session_state.ej1_noise_done = True
+            st.session_state.ej1_ber_done = True
+
+    # --- Cálculo reactivo en CADA rerun con los valores actuales de los widgets ---
+    # La señal solo se calcula si el paso "Generar señal" ya fue ejecutado.
+    if st.session_state.ej1_signal_done:
         fs = 2000
         Tb = T
+        rng_bits = np.random.default_rng(st.session_state.ej1_bits_seed)
+        bits = rng_bits.integers(0, 2, size=int(nbits))
         t, tx = generar_tren_nrz(bits, fs, Tb, level0=lvl0, level1=lvl1)
         state["bits"] = bits
         state["t"] = t
         state["tx"] = tx
-        state["noise"] = np.zeros_like(tx)
-        state["rx"] = np.zeros_like(tx)
         state["fs"] = fs
         state["Tb"] = Tb
-        st.info("Señal generada correctamente.")
 
-    if gen_noise_clicked:
-        if state["tx"].size == 0:
-            st.warning("Primero genera la señal.")
+        # Ruido AWGN: depende de la SNR actual y de la semilla persistida.
+        if st.session_state.ej1_noise_done:
+            rng_noise = np.random.default_rng(st.session_state.ej1_noise_seed)
+            sigp = np.mean(tx ** 2) if tx.size > 0 else 1e-12
+            SNR_lin = 10 ** (snr / 10.0)
+            noise_p = sigp / SNR_lin if SNR_lin > 0 else sigp
+            noise = np.sqrt(noise_p) * rng_noise.standard_normal(tx.shape)
         else:
-            noise = generar_ruido_awgn(state["tx"], snr)
-            state["noise"] = noise
-            st.info("Ruido AWGN generado.")
+            noise = np.zeros_like(tx)
+        state["noise"] = noise
 
-    if combine_clicked:
-        if state["tx"].size == 0:
-            st.warning("Primero genera la señal.")
-        else:
-            # Si no hay ruido previo, se genera con la SNR actual
-            if state["noise"].size == 0 or not np.any(state["noise"]):
-                noise = generar_ruido_awgn(state["tx"], snr)
-                state["noise"] = noise
-            else:
-                noise = state["noise"]
-
-            rx = state["tx"] + noise
-            delay_samples = int(round(delay_frac * state["Tb"] * state["fs"]))
+        # Señal + ruido con el retardo actual del canal.
+        delay_samples = int(round(delay_frac * Tb * fs))
+        if st.session_state.ej1_combine_done or st.session_state.ej1_ber_done:
+            rx = tx + noise
             if delay_samples > 0:
                 rx_del = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
             else:
                 rx_del = rx
             state["rx"] = rx_del
+        else:
+            state["rx"] = np.zeros_like(tx)
+
+    if st.session_state.ej1_combine_done:
             st.success("Señal + ruido combinados correctamente.")
 
             with st.expander("**Explicación de la simulación y preguntas**", expanded=True):
@@ -938,21 +986,11 @@ def render_ejemplo1():
                     "una distribución gaussiana y espectro aproximadamente plano en el ancho de banda de interés."
                 )
 
-    if ber_clicked:
-        if state["bits"].size == 0:
-            st.warning("Genera primero la señal.")
-        else:
-            # Se regenera ruido y señal+ruido con la SNR y retardo actuales
-            noise = generar_ruido_awgn(state["tx"], snr)
-            state["noise"] = noise
-            rx = state["tx"] + noise
+    if st.session_state.ej1_ber_done and state["bits"].size > 0:
+        if True:
+            # La señal+ruido (state["rx"]) ya fue recomputada arriba con la SNR
+            # y el retardo actuales y la semilla de ruido persistida.
             delay_samples = int(round(delay_frac * state["Tb"] * state["fs"]))
-            if delay_samples > 0:
-                rx_del = np.concatenate((np.zeros(delay_samples), rx))[:rx.size]
-            else:
-                rx_del = rx
-            state["rx"] = rx_del
-
             thr = (lvl0 + lvl1) / 2.0
             decisions = regenerador_muestreo(
                 state["rx"],
@@ -1062,10 +1100,14 @@ def render_ejemplo2():
             step=0.01,
             key="g1_ej2_k3"
         )
-        run = st.button("Generar y aplicar no linealidad", key="g1_ej2_run")
+        if st.button("Generar y aplicar no linealidad", key="g1_ej2_run"):
+            st.session_state.g1_ej2_done = True
 
+    if not st.session_state.get("g1_ej2_done"):
+        st.info("Pulsa **Generar y aplicar no linealidad** para ver el efecto de la no linealidad.")
+        return
 
-    if run:
+    if True:
         # --- Señales en el tiempo ---
         fs = 32000  # frecuencia de muestreo
         T = 0.03    # duración de la simulación (s)
@@ -1384,9 +1426,14 @@ def render_ejemplo3():
         fstart_MHz = st.number_input("Frecuencia inicio (MHz)", value=1.0)
         fend_MHz = st.number_input("Frecuencia fin (MHz)", value=1000.0)
         npts = st.number_input("Número de puntos", min_value=10, max_value=2000, value=200, step=10)
-        run = st.button("Simular comparación")
+        if st.button("Simular comparación"):
+            st.session_state.g1_ej3_run = True
 
-    if run:
+    if not st.session_state.get("g1_ej3_run"):
+        st.info("Pulsa **Simular comparación** para visualizar las curvas de atenuación.")
+        return
+
+    if True:
         try:
             if fstart_MHz <= 0 or fend_MHz <= 0 or fend_MHz <= fstart_MHz or npts <= 2 or dist_m <= 0:
                 raise ValueError
