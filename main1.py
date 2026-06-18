@@ -1537,7 +1537,21 @@ def render_dinamicas_guia1():
             st.success("Datos guardados correctamente.")
 
     if not all(state["student"].values()):
-        st.warning("Ingresa tus datos para habilitar las dinámicas.")
+        st.markdown(
+            """
+            <div style="
+                background-color: #fff3cd;
+                color: #000000;
+                padding: 12px;
+                border-radius: 6px;
+                border: 1px solid #ffeeba;
+                font-weight: 500;
+            ">
+                ⚠️ Ingresa tus datos para habilitar las dinámicas.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
 
     st.markdown("---")
