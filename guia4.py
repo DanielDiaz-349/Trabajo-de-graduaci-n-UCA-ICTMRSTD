@@ -1896,9 +1896,11 @@ def render_guia4():
         with sub_tabs[2]:
             render_ejemplo3()
 
-    with tabs[4]:
-        render_dinamicas_guia4()
-
+    # Conclusiones se renderiza antes que Dinámicas para que esté siempre
+    # disponible (la dinámica usa st.stop() al faltar datos del estudiante).
     with tabs[5]:
         st.subheader("Conclusiones")
         st.markdown(CONCLUSIONES_TEXT)
+
+    with tabs[4]:
+        render_dinamicas_guia4()
