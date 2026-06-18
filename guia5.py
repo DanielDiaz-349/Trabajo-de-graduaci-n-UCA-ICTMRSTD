@@ -524,25 +524,21 @@ def render_ejemplo1():
             diagram_path = p
             break
 
-    media_col, plot_col = st.columns([1, 2])
-
-    with media_col:
-        if diagram_path is not None:
-            st.image(
-                diagram_path,
-                caption="Modelo general de un sistema digital en presencia de AWGN",
-                use_container_width=True
-            )
-        else:
-            st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
-
-    with plot_col:
-        st.plotly_chart(fig, use_container_width=True, theme=None)
-
-        st.markdown(
-            f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
-            f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
+    if diagram_path is not None:
+        st.image(
+            diagram_path,
+            caption="Modelo general de un sistema digital en presencia de AWGN",
+            use_container_width=True
         )
+    else:
+        st.warning("No pude cargar la imagen. Guarda 'modelo_binario.png' en la carpeta assets/ del repositorio.")
+
+    st.plotly_chart(fig, use_container_width=True, theme=None)
+
+    st.markdown(
+        f"**Parámetros:** $E_b/N_0$ = {EbN0_dB:.1f} dB, $T_b$ = {Tb_ms:.2f} ms, $f_c$ = {fc} Hz  \n"
+        f"**Resultado:** errores = {n_err}/{Nb},  $\\widehat{{BER}}$ ≈ {ber_hat:.3f}"
+    )
 
     with st.expander("Explicación, preguntas y respuestas", expanded=True):
         st.markdown(
