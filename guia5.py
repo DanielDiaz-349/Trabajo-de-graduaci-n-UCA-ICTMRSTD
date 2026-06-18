@@ -1265,9 +1265,7 @@ def _render_dyn3():
 
 def render_dinamicas_guia5():
     _init_dyn_state()
-    st.markdown("## Actividades dinámicas (evaluación)")
-    st.markdown("Completa las 3 dinámicas. Al final, pulsa **Enviar respuestas**.")
-
+    st.markdown("## Dinámicas – Guía 5")
     state = st.session_state.guia5_dinamicas
 
     student_info = _ensure_student_info("g5_form_student")
