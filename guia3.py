@@ -655,9 +655,16 @@ def render_ejemplo1():
     with col1:
         tipo = st.selectbox("Tipo de experimento", ["Moneda (cara)", "Dado (resultado = 6)"])
         N = st.slider("Número de lanzamientos N", min_value=10, max_value=5000, value=200, step=10)
-        run = st.button("Simular experimento", key="g3_ej1_run")
+        if st.button("Simular experimento", key="g3_ej1_run"):
+            st.session_state.g3_ej1_flag = True
+            st.session_state.g3_ej1_seed = int(np.random.randint(0, 2**31 - 1))
 
-    if run:
+    if not st.session_state.get("g3_ej1_flag"):
+        st.info("Ajusta los parámetros y pulsa **Simular experimento** para generar la gráfica.")
+        return
+
+    np.random.seed(st.session_state.get("g3_ej1_seed", 12345))
+    if True:
         if tipo.startswith("Moneda"):
             p_teor = 0.5
             # 1 = cara, 0 = cruz
@@ -762,9 +769,16 @@ def render_ejemplo2():
         )
         valor_puntual = st.number_input("Valor puntual de la VA mixta", value=0.0, format="%.2f")
         peso_puntual = st.slider("Probabilidad del valor puntual en VA mixta", 0.0, 0.9, 0.3, 0.05)
-        run = st.button("Simular variables", key="g3_ej2_run")
+        if st.button("Simular variables", key="g3_ej2_run"):
+            st.session_state.g3_ej2_flag = True
+            st.session_state.g3_ej2_seed = int(np.random.randint(0, 2**31 - 1))
 
-    if run:
+    if not st.session_state.get("g3_ej2_flag"):
+        st.info("Ajusta los parámetros y pulsa **Simular variables** para generar las gráficas.")
+        return
+
+    np.random.seed(st.session_state.get("g3_ej2_seed", 12345))
+    if True:
         sigma = np.sqrt(sigma2)
         # Discreta: dado (1..6)
         Xd = np.random.randint(1, 7, size=N)
@@ -1015,9 +1029,16 @@ $$
             max_value=SIGMA2_MAX
         )
         N = st.slider("Número de muestras", min_value=500, max_value=100000, value=10000, step=500)
-        run = st.button("Simular ruido Gaussiano", key="g3_ej3_run")
+        if st.button("Simular ruido Gaussiano", key="g3_ej3_run"):
+            st.session_state.g3_ej3_flag = True
+            st.session_state.g3_ej3_seed = int(np.random.randint(0, 2**31 - 1))
 
-    if run:
+    if not st.session_state.get("g3_ej3_flag"):
+        st.info("Ajusta los parámetros y pulsa **Simular ruido Gaussiano** para generar las gráficas.")
+        return
+
+    np.random.seed(st.session_state.get("g3_ej3_seed", 12345))
+    if True:
         sigma = float(np.sqrt(sigma2))
 
         # Simulación
@@ -1147,9 +1168,16 @@ def render_ejemplo4():
             min_value=1000, max_value=100000, value=20000, step=1000,
             key="g3_ej4_N_new"
         )
-        run = st.button("Simular detector", key="g3_ej4_run_new")
+        if st.button("Simular detector", key="g3_ej4_run_new"):
+            st.session_state.g3_ej4_flag = True
+            st.session_state.g3_ej4_seed = int(np.random.randint(0, 2**31 - 1))
 
-    if run:
+    if not st.session_state.get("g3_ej4_flag"):
+        st.info("Ajusta los parámetros y pulsa **Simular detector** para generar las gráficas.")
+        return
+
+    np.random.seed(st.session_state.get("g3_ej4_seed", 12345))
+    if True:
         # Estado real S: 1 si hay señal, 0 si no hay señal
         S = (np.random.rand(N) < p_signal).astype(int)
 
@@ -1327,9 +1355,16 @@ def render_ejemplo5():
             1000, 100000, 20000, 1000,
             key="g3_ej5_N",
         )
-        run = st.button("Simular detector MAP", key="g3_ej5_run")
+        if st.button("Simular detector MAP", key="g3_ej5_run"):
+            st.session_state.g3_ej5_flag = True
+            st.session_state.g3_ej5_seed = int(np.random.randint(0, 2**31 - 1))
 
-    if run:
+    if not st.session_state.get("g3_ej5_flag"):
+        st.info("Ajusta los parámetros y pulsa **Simular detector MAP** para generar las gráficas.")
+        return
+
+    np.random.seed(st.session_state.get("g3_ej5_seed", 12345))
+    if True:
         # SNR = A^2 / sigma^2 => sigma
         SNR_lin = 10 ** (SNR_dB / 10.0)
         sigma2 = A ** 2 / max(SNR_lin, 1e-12)

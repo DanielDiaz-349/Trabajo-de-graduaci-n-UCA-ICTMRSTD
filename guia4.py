@@ -392,11 +392,17 @@ def render_ejemplo1():
         fs = 2000.0  # fijo internamente
         N = int(fs * T)
 
-        sim = st.button("Simular", key="g4_e1_btn")
+        if st.button("Simular", key="g4_e1_btn"):
+            st.session_state.g4_e1_seed = int(np.random.randint(0, 2**31 - 1))
+            st.session_state.g4_e1_run = True
 
-    if sim:
+    if not st.session_state.get("g4_e1_run"):
+        state["ready"] = False
+        with col2:
+            st.info("Ajusta los parámetros y pulsa **Simular** para generar las gráficas.")
+    else:
         sigma = float(np.sqrt(var))  # >>> se usa σ internamente
-        seed = int(np.random.randint(0, 2**31 - 1))
+        seed = int(st.session_state.get("g4_e1_seed", 12345))
         rng = np.random.default_rng(seed)
 
         X = mu + sigma * rng.standard_normal(size=(Nr, N))
@@ -700,17 +706,21 @@ def render_ejemplo2():
                 key="g4_e2_varslope"
             )
 
-        sim = st.button("Simular", key="g4_e2_btn")
+        if st.button("Simular", key="g4_e2_btn"):
+            st.session_state.g4_e2_seed = int(np.random.randint(0, 2**31 - 1))
+            st.session_state.g4_e2_run = True
 
-    # -------------------- Simulación (solo al presionar) --------------------
-    if sim:
+    # -------------------- Simulación (se re-ejecuta en cada rerun) --------------------
+    if not st.session_state.get("g4_e2_run"):
+        state["ready"] = False
+    else:
         # fs fijo interno (no es parámetro de estudio aquí)
         fs = 250.0
         N = int(fs * T)
         N = max(N, 2)
         t = np.arange(N) / fs
 
-        seed = int(np.random.randint(0, 2**31 - 1))
+        seed = int(st.session_state.get("g4_e2_seed", 12345))
         rng = _rng_from_seed(seed)
 
         # Construir μ(t) y σ²(t)
@@ -1011,13 +1021,13 @@ def render_ejemplo3():
                 min_value=50, max_value=800, value=250, step=25, key="g4_e3_bw"
             )
 
-        sim = st.button("Simular", key="g4_e3_btn")
+        if st.button("Simular", key="g4_e3_btn"):
+            st.session_state.g4_e3_seed = int(np.random.randint(0, 2**31 - 1))
+            st.session_state.g4_e3_run = True
 
-    # Solo simular cuando se presiona el botón
-    if sim:
-        st.session_state.g4_e3_seed = int(np.random.randint(0, 2**31 - 1))
-
-        seed = st.session_state.g4_e3_seed
+    # Se re-ejecuta en cada rerun usando los valores actuales de los widgets
+    if st.session_state.get("g4_e3_run"):
+        seed = int(st.session_state.get("g4_e3_seed", 12345))
         rng = _rng_from_seed(seed)
 
         sigma = float(np.sqrt(var))
